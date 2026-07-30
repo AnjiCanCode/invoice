@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SWETA - Your Work Tracking Buddy 💜</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff6b9d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SWETA">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="SWETA">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 25%, #ff6b9d 50%, #c44569 75%, #a29bfe 100%);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            animation: backgroundShift 15s ease infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes backgroundShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: linear-gradient(to bottom, #ffe4f4, #fff5f5);
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(255, 107, 157, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 20px);
+            height: calc(100dvh - 20px);
+            max-height: 800px;
+            border: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b9d 0%, #feca57 100%);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+        }
+
+        .header h1 { font-size: 22px; font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+        .header .subtitle { font-size: 10px; opacity: 0.9; margin-top: 2px; }
+
+        .settings-btn, .install-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+        .settings-btn { left: 15px; }
+        .install-btn { right: 15px; display: none; }
+        .install-btn.show { display: block; }
+
+        .status-bar {
+            background: rgba(255,255,255,0.9);
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #636e72;
+            border-bottom: 1px solid rgba(255,107,157,0.2);
+            flex-shrink: 0;
+        }
+
+        .status-indicator { display: flex; align-items: center; gap: 5px; }
+        .status-dot { width: 8px; height: 8px; background: #00b894; border-radius: 50%; animation: pulse 2s infinite; }
+        .status-dot.offline { background: #e74c3c; animation: none; }
+        .status-dot.no-push { background: #f39c12; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message-wrapper { display: flex; flex-direction: column; gap: 2px; }
+        .message-wrapper.user { align-items: flex-end; }
+        .message-wrapper.bot { align-items: flex-start; }
+        .message-wrapper.system { align-items: center; }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            animation: messageSlide 0.3s ease;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .message-timestamp { font-size: 10px; color: #999; padding: 0 8px; }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bot-message {
+            background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+            color: white;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8e72 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+        }
+
+        .system-message {
+            background: linear-gradient(135deg, #fdcb6e 0%, #f39c12 100%);
+            color: white;
+            text-align: center;
+            font-size: 12px;
+            padding: 8px 16px;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #dfe6e9 0%, #b2bec3 100%);
+            border-radius: 20px;
+            border-bottom-left-radius: 5px;
+        }
+        .typing-indicator.show { display: flex; gap: 5px; }
+        .typing-indicator span {
+            width: 8px; height: 8px;
+            background: #636e72;
+            border-radius: 50%;
+            animation: typingBounce 1.4s ease-in-out infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .input-container {
+            padding: 15px;
+            background: rgba(255,255,255,0.95);
+            border-top: 2px solid rgba(255,107,157,0.2);
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #dfe6e9;
+            border-radius: 25px;
+            font-size: 14px;
+            font-family: 'Quicksand', sans-serif;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .input-field:focus { border-color: #ff6b9d; box-shadow: 0 0 15px rgba(255, 107, 157, 0.2); }
+
+        .send-button {
+            width: 50px; height: 50px;
+            border: none;
+            background: linear-gradient(135deg, #ff6b9d 0%, #feca57 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .send-button:hover { transform: scale(1.1); }
+
+        /* Panels */
+        .setup-panel, .config-panel {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #ffe4f4, #fff5f5);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .setup-panel.show, .config-panel.show { display: flex; }
+
+        .panel-header { text-align: center; margin-bottom: 20px; }
+        .panel-header h2 { color: #ff6b9d; font-size: 24px; margin-bottom: 5px; }
+        .panel-header p { color: #636e72; font-size: 14px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; color: #636e72; font-size: 14px; margin-bottom: 8px; font-weight: 600; }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #dfe6e9;
+            border-radius: 15px;
+            font-size: 14px;
+            font-family: 'Quicksand', sans-serif;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .form-input:focus { border-color: #ff6b9d; }
+
+        .form-row { display: flex; gap: 10px; }
+        .form-row .form-group { flex: 1; }
+
+        .btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Quicksand', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #ff6b9d 0%, #feca57 100%); color: white; }
+        .btn-secondary { background: #dfe6e9; color: #636e72; }
+        .btn-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; }
+        .btn-success { background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); color: white; }
+        .btn-small { padding: 10px 16px; font-size: 13px; }
+        .btn-active { background: linear-gradient(135deg, #0984e3 0%, #74b9ff 100%); color: white; animation: pulseBtn 1s infinite; }
+
+        @keyframes pulseBtn {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(9, 132, 227, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(9, 132, 227, 0); }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: rgba(255,107,157,0.2);
+            border: none;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .info-box {
+            background: rgba(255,107,157,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .info-box.warning { background: rgba(230, 126, 34, 0.15); }
+        .info-box.success { background: rgba(0, 184, 148, 0.15); }
+        .info-box h3 { color: #ff6b9d; font-size: 14px; margin-bottom: 8px; }
+        .info-box.warning h3 { color: #e67e22; }
+        .info-box.success h3 { color: #00b894; }
+        .info-box p, .info-box li { color: #636e72; font-size: 13px; line-height: 1.6; }
+        .info-box ol { padding-left: 20px; }
+
+        .divider { text-align: center; color: #ff6b9d; margin: 20px 0; font-size: 14px; }
+
+        .notif-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .notif-status-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .notif-status-dot.granted { background: #00b894; }
+        .notif-status-dot.denied { background: #e74c3c; }
+        .notif-status-dot.default { background: #f39c12; }
+
+        .stats-display {
+            background: rgba(162, 155, 254, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .stats-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .stats-label { color: #636e72; font-size: 12px; }
+        .stats-value { color: #6c5ce7; font-weight: 600; font-size: 14px; }
+
+        .install-banner {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(135deg, #ff6b9d 0%, #feca57 100%);
+            color: white;
+            padding: 15px 20px;
+            z-index: 999;
+        }
+        .install-banner.show { display: flex; justify-content: space-between; align-items: center; }
+        .install-banner-text { flex: 1; }
+        .install-banner-text h4 { font-size: 14px; margin-bottom: 2px; }
+        .install-banner-text p { font-size: 11px; opacity: 0.9; }
+        .install-banner-btn {
+            background: white; color: #ff6b9d;
+            border: none; padding: 10px 20px;
+            border-radius: 20px; font-weight: 600;
+            cursor: pointer; margin-left: 10px;
+        }
+        .install-banner-close { background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; margin-left: 10px; }
+
+        .notif-banner {
+            display: none;
+            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+            color: white;
+            padding: 12px 15px;
+            text-align: center;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .notif-banner.show { display: block; }
+
+        .invoice-toolbar {
+            background: rgba(255,255,255,0.95);
+            padding: 8px 12px;
+            display: none;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255,107,157,0.2);
+            flex-shrink: 0;
+        }
+        .invoice-toolbar.show { display: flex; }
+        .invoice-btn {
+            flex: 1;
+            padding: 8px 4px;
+            border: none;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Quicksand', sans-serif;
+            cursor: pointer;
+            background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+            color: white;
+            text-align: center;
+            line-height: 1.3;
+            transition: opacity 0.2s;
+        }
+        .invoice-btn:active { opacity: 0.7; }
+
+        @media (max-width: 480px) {
+            body { padding: 0; }
+            .container { border-radius: 0; height: 100vh; height: 100dvh; max-height: none; border: none; }
+            .header h1 { font-size: 18px; }
+            .message { max-width: 90%; font-size: 13px; }
+        }
+
+        @media (display-mode: standalone) {
+            body { padding: 0; }
+            .container { border-radius: 0; height: 100vh; height: 100dvh; max-height: none; border: none; }
+        }
+    </style>
+    <!-- jsPDF for invoice generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <!-- Setup Panel -->
+    <div class="setup-panel" id="setupPanel">
+        <div class="panel-header">
+            <h2>Welcome to SWETA! 💜</h2>
+            <p>Shitty Work Executive Tracking Assistant</p>
+        </div>
+
+        <div id="setupStep1">
+            <div class="form-group">
+                <label>What's your name? 🌟</label>
+                <input type="text" class="form-input" id="setupName" placeholder="Enter your name">
+            </div>
+            <button class="btn btn-primary" onclick="setupStep2()">Next →</button>
+        </div>
+
+        <div id="setupStep2" style="display: none;">
+            <div class="form-group">
+                <label>Create a security question 🔐</label>
+                <input type="text" class="form-input" id="setupQuestion" placeholder="e.g., What's your pet's name?">
+            </div>
+            <div class="form-group">
+                <label>Your answer</label>
+                <input type="text" class="form-input" id="setupAnswer" placeholder="Your secret answer">
+            </div>
+            <button class="btn btn-primary" onclick="setupStep3()">Next →</button>
+            <button class="btn btn-secondary" onclick="backToStep1()">← Back</button>
+        </div>
+
+        <div id="setupStep3" style="display: none;">
+            <div class="form-group">
+                <label>Google Apps Script URL 📝</label>
+                <input type="text" class="form-input" id="setupScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+            <div class="info-box">
+                <h3>📚 Quick Setup Guide</h3>
+                <ol>
+                    <li>Create a new Google Sheet 📊</li>
+                    <li>Go to Extensions → Apps Script 🔧</li>
+                    <li>Copy the provided script code 📋</li>
+                    <li>Deploy as Web App 🚀</li>
+                    <li>Paste the Web App URL above 🔗</li>
+                </ol>
+            </div>
+            <button class="btn btn-primary" onclick="completeSetup()">Complete Setup 🎉</button>
+            <button class="btn btn-secondary" onclick="backToStep2()">← Back</button>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="config-panel" id="configPanel">
+        <button class="close-btn" onclick="closeSettings()">✕</button>
+        <div class="panel-header">
+            <h2>⚙️ Settings</h2>
+            <p>Customize your SWETA experience</p>
+        </div>
+
+        <div class="divider">~ ♡ Push Notifications ♡ ~</div>
+        <div class="notif-status">
+            <div class="notif-status-dot" id="notifStatusDot"></div>
+            <span id="notifStatusText">Checking...</span>
+        </div>
+        <button class="btn btn-success btn-small" onclick="subscribeToPush()">🔔 Enable Push Notifications</button>
+        
+        <div class="divider">~ ♡ Test Notifications ♡ ~</div>
+        <button class="btn btn-small" onclick="sendServerTestPush()">📤 Send Test Push (then close app)</button>
+        <div class="info-box warning" style="margin-top: 10px;">
+            <h3>🧪 How to Test Background Notifications</h3>
+            <p>1. Make sure push is enabled (green dot above)<br>
+            2. Tap "Send Test Push"<br>
+            3. <strong>Immediately close the app</strong><br>
+            4. You should receive a notification in ~5 seconds!</p>
+        </div>
+        
+        <div class="info-box success" id="pushEnabledBox" style="display: none;">
+            <h3>✅ Background Notifications Enabled!</h3>
+            <p>You'll receive notifications even when the app is closed. Powered by Cloudflare Workers.</p>
+        </div>
+
+        <div class="divider">~ ♡ User Profile ♡ ~</div>
+        <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" class="form-input" id="configName" placeholder="Your name">
+        </div>
+
+        <div class="divider">~ ♡ Working Hours ♡ ~</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Start Time</label>
+                <input type="time" class="form-input" id="configStartTime" value="08:30">
+            </div>
+            <div class="form-group">
+                <label>End Time</label>
+                <input type="time" class="form-input" id="configEndTime" value="21:30">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Check-in Interval (minutes)</label>
+            <select class="form-input" id="configInterval">
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60" selected>60 minutes (1 hour)</option>
+                <option value="90">90 minutes (1.5 hours)</option>
+                <option value="120">120 minutes (2 hours)</option>
+            </select>
+            <small style="color: #b388ff; font-size: 11px;">How often you want check-in reminders</small>
+        </div>
+
+        <div class="divider">~ ♡ Integration ♡ ~</div>
+        <div class="form-group">
+            <label>Google Apps Script URL</label>
+            <input type="text" class="form-input" id="configScriptUrl" placeholder="Your script URL">
+        </div>
+
+        <div class="divider">~ ♡ Monthly Goal ♡ ~</div>
+        <div class="form-group">
+            <label>Target Hours/Month</label>
+            <input type="number" class="form-input" id="configTargetHours" value="175" min="1" max="300">
+        </div>
+
+        <div class="stats-display">
+            <div class="stats-row">
+                <span class="stats-label">Hours Today:</span>
+                <span class="stats-value" id="statsToday">0h 0m</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Hours This Month:</span>
+                <span class="stats-value" id="statsMonth">0h 0m</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Days Remaining:</span>
+                <span class="stats-value" id="statsDaysLeft">0</span>
+            </div>
+        </div>
+
+        <div class="divider">~ ♡ Invoice Settings ♡ ~</div>
+        <div class="form-group">
+            <label>Monthly Rate (₹)</label>
+            <input type="number" class="form-input" id="configMonthlyRate" placeholder="e.g. 74250" min="0">
+        </div>
+        <div class="form-group">
+            <label>Invoice Recipient Email</label>
+            <input type="email" class="form-input" id="configInvoiceEmail" placeholder="recipient@example.com">
+        </div>
+        <div class="form-group">
+            <label>Next Invoice Number</label>
+            <input type="number" class="form-input" id="configInvoiceNumber" value="1" min="1">
+        </div>
+        <div class="form-group">
+            <label>Invoice Period Start Date <small style="color:#b388ff">(DD/MM/YYYY - tasks since this date)</small></label>
+            <input type="text" class="form-input" id="configLastInvoiceDate" placeholder="e.g. 01/02/2026">
+        </div>
+
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+        <button class="btn btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+    </div>
+
+    <!-- Notification Permission Banner -->
+    <div class="notif-banner" id="notifBanner" onclick="subscribeToPush()">
+        🔔 Tap here to enable push notifications - works even when app is closed!
+    </div>
+
+    <!-- Install Banner -->
+    <div class="install-banner" id="installBanner">
+        <div class="install-banner-text">
+            <h4>📱 Install SWETA</h4>
+            <p>Add to home screen for the best experience!</p>
+        </div>
+        <button class="install-banner-btn" id="installBannerBtn">Install</button>
+        <button class="install-banner-close" onclick="dismissInstallBanner()">✕</button>
+    </div>
+
+    <!-- Main Chat Container -->
+    <div class="container" id="mainContainer">
+        <div class="header">
+            <button class="settings-btn" onclick="openSettings()">⚙️</button>
+            <h1>SWETA 💜</h1>
+            <div class="subtitle">Shitty Work Executive Tracking Assistant</div>
+            <button class="install-btn" id="installBtn" onclick="installApp()">📲</button>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Online</span>
+            </div>
+            <span id="currentTime"></span>
+        </div>
+
+        <div class="invoice-toolbar" id="invoiceToolbar">
+            <button class="invoice-btn" onclick="generateAndPreviewInvoice()">📄 Generate<br>Invoice</button>
+            <button class="invoice-btn" onclick="sendInvoiceViaEmail()">📧 Email<br>Invoice</button>
+            <button class="invoice-btn" onclick="downloadInvoice()">⬇️ Download<br>Invoice</button>
+        </div>
+
+        <div class="chat-container" id="chatContainer"></div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <span></span><span></span><span></span>
+        </div>
+
+        <div class="input-container">
+            <input type="text" class="input-field" id="messageInput" placeholder="Type your response... 💬" autocomplete="off">
+            <button class="send-button" id="sendButton" onclick="sendMessage()"><span>💜</span></button>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // SWETA v3.3.0 - Push messages now appear in chat
+        // =====================================================
+
+        // =====================================================
+        // CONFIGURATION — UPDATE BEFORE DEPLOYING!
+        // =====================================================
+        // Must match VAPID_PUBLIC_KEY in cloudflare-worker.js
+        const VAPID_PUBLIC_KEY = 'BI6m8q9TjhDGC1FH1kTKkHxwiR1lLKMv-sqkXLForZ4y4QdQ5vJk1-F3hBRKCjfxPr00Io4QLB9Y2MEpG2zddlQ';  // ← REPLACE if you generate new VAPID keys
+
+        const state = {
+            userName: '',
+            securityQuestion: '',
+            securityAnswer: '',
+            scriptUrl: '',
+            startTime: '08:30',
+            endTime: '21:30',
+            interval: 60,
+            targetHours: 175,
+            chatHistory: [],
+            todayTasks: [],
+            taskHistory: [],
+            monthlyMinutes: 0,
+            todayMinutes: 0,
+            ignoredCount: 0,
+            lastCheckTime: null,
+            lastSummaryTime: null,
+            lastDailyStatsTime: null,
+            lastWeeklyReminder: null,
+            isSetupComplete: false,
+            awaitingDuration: false,
+            pendingTask: null,
+            isOnline: navigator.onLine,
+            swRegistration: null,
+            pushSubscription: null,
+            // Invoice fields
+            monthlyRate: 0,
+            invoiceEmail: '',
+            invoiceNumber: 1,
+            lastInvoiceDate: ''
+        };
+
+        let appJustOpened = true;
+        let subscriptionCheckComplete = false; // Flag to track if we've checked subscription
+
+        // =====================================================
+        // Initialization
+        // =====================================================
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 SWETA starting...');
+            loadState();
+            await registerServiceWorker();
+            initializeApp();
+            setupEventListeners();
+            updateOnlineStatus();
+            console.log('✅ SWETA initialized');
+        });
+
+        async function initializeApp() {
+            console.log('🔧 initializeApp, isSetupComplete =', state.isSetupComplete);
+            if (!state.isSetupComplete) {
+                document.getElementById('setupPanel').classList.add('show');
+                document.getElementById('mainContainer').style.display = 'none';
+            } else {
+                document.getElementById('setupPanel').classList.remove('show');
+                document.getElementById('mainContainer').style.display = 'flex';
+                loadChatHistory();
+                startScheduler();
+                updateStats();
+                document.getElementById('invoiceToolbar').classList.add('show');
+                
+                // Check subscription FIRST, then show banner based on result
+                await checkPushSubscription();
+                subscriptionCheckComplete = true;
+                showNotificationBannerIfNeeded();
+            }
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+        }
+
+        // =====================================================
+        // Service Worker & Push Subscription
+        // =====================================================
+
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) return;
+
+            try {
+                const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+                state.swRegistration = registration;
+                console.log('✅ SW registered');
+
+                await navigator.serviceWorker.ready;
+                
+                navigator.serviceWorker.addEventListener('message', event => {
+                    if (event.data?.type === 'PUSH_RECEIVED') {
+                        handlePushMessage(event.data.payload);
+                    }
+                    if (event.data?.type === 'PENDING_MESSAGES') {
+                        handlePendingMessages(event.data.messages);
+                    }
+                });
+                
+                // Request any pending messages that arrived while app was closed
+                requestPendingMessages();
+                
+            } catch (error) {
+                console.error('❌ SW registration failed:', error);
+            }
+        }
+        
+        function requestPendingMessages() {
+            if (navigator.serviceWorker.controller) {
+                console.log('📬 Requesting pending messages from SW...');
+                navigator.serviceWorker.controller.postMessage({ type: 'GET_PENDING_MESSAGES' });
+            }
+        }
+        
+        function handlePendingMessages(messages) {
+            if (!messages || messages.length === 0) {
+                console.log('📭 No pending messages');
+                return;
+            }
+            
+            console.log('📬 Received', messages.length, 'pending messages');
+            
+            messages.forEach(msg => {
+                // Check if message already exists in history (by timestamp)
+                const exists = state.chatHistory.some(h => h.timestamp === msg.timestamp);
+                if (!exists) {
+                    state.chatHistory.push({
+                        text: msg.text,
+                        sender: msg.sender,
+                        timestamp: msg.timestamp
+                    });
+                    addMessageToUI(msg.text, msg.sender, msg.timestamp, false);
+                }
+            });
+            
+            saveState();
+            scrollToBottom();
+        }
+
+        async function subscribeToPush() {
+            if (!state.swRegistration) {
+                addSystemMessage('⚠️ Service Worker not ready. Please refresh.');
+                return;
+            }
+
+            try {
+                // Request notification permission
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    addSystemMessage('❌ Please allow notifications to enable push.');
+                    checkNotificationPermission();
+                    return;
+                }
+
+                // Subscribe to push
+                const subscription = await state.swRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+
+                state.pushSubscription = subscription;
+                console.log('✅ Push subscription:', JSON.stringify(subscription));
+
+                // Send subscription to server
+                await saveSubscriptionToServer(subscription);
+
+                addSystemMessage('🎉 Push notifications enabled! You\'ll receive reminders even when the app is closed.');
+                checkNotificationPermission();
+                document.getElementById('pushEnabledBox').style.display = 'block';
+                document.getElementById('notifBanner')?.classList.remove('show');
+
+            } catch (error) {
+                console.error('❌ Push subscription failed:', error);
+                addSystemMessage('❌ Failed to enable push: ' + error.message);
+            }
+        }
+
+        async function saveSubscriptionToServer(subscription) {
+            if (!state.scriptUrl) return;
+
+            const data = {
+                action: 'saveSubscription',
+                userName: state.userName,
+                subscription: JSON.stringify(subscription),
+                settings: {
+                    startTime: state.startTime,
+                    endTime: state.endTime,
+                    interval: state.interval,
+                    timezone: 'Asia/Kolkata'
+                }
+            };
+
+            try {
+                await fetch(state.scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                console.log('📝 Subscription save request sent (no-cors, response opaque)');
+            } catch (error) {
+                console.error('❌ Subscription save failed (network error):', error);
+                addSystemMessage('⚠️ Could not reach server. Check your Apps Script URL in Settings.');
+                return;
+            }
+
+            // Verify the subscription was actually saved (no-cors hides POST response)
+            // GAS GET requests work with redirect:follow, so we can read the response
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                const verifyUrl = `${state.scriptUrl}?action=getSubscriptionStatus&userName=${encodeURIComponent(state.userName)}`;
+                const resp = await fetch(verifyUrl, { redirect: 'follow' });
+                const result = await resp.json();
+                if (result.found && result.hasSubscription) {
+                    console.log('✅ Subscription verified on server');
+                } else {
+                    console.warn('⚠️ Subscription not found on server after save');
+                    addSystemMessage('⚠️ Subscription may not have saved. Check the _Subscriptions sheet.');
+                }
+            } catch (verifyError) {
+                console.warn('⚠️ Could not verify subscription:', verifyError.message);
+            }
+        }
+
+        async function checkPushSubscription() {
+            if (!state.swRegistration) return;
+
+            try {
+                const subscription = await state.swRegistration.pushManager.getSubscription();
+                state.pushSubscription = subscription;
+                
+                if (subscription) {
+                    document.getElementById('pushEnabledBox').style.display = 'block';
+                    console.log('✅ Found existing push subscription');
+                } else {
+                    console.log('ℹ️ No push subscription found');
+                }
+                
+                checkNotificationPermission();
+            } catch (error) {
+                console.error('Error checking subscription:', error);
+            }
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        function handlePushMessage(payload) {
+            console.log('📨 Push message received in app:', payload);
+            
+            // Add the message to chat
+            if (payload.body) {
+                const timestamp = new Date().toISOString();
+                // Check if already exists (from pending messages)
+                const exists = state.chatHistory.some(h => 
+                    h.text === payload.body && 
+                    Math.abs(new Date(h.timestamp) - new Date(timestamp)) < 5000
+                );
+                if (!exists) {
+                    addBotMessage(payload.body);
+                }
+            }
+            
+            if (payload.type === 'hourly') {
+                state.ignoredCount++;
+                state.lastCheckTime = new Date().toISOString();
+                saveState();
+            }
+        }
+
+        // =====================================================
+        // Test Push - Server-side only
+        // =====================================================
+
+        async function sendServerTestPush() {
+            if (!state.pushSubscription) {
+                addSystemMessage('⚠️ Please enable push notifications first!');
+                return;
+            }
+            
+            if (!state.scriptUrl) {
+                addSystemMessage('⚠️ Google Apps Script URL not configured.');
+                return;
+            }
+            
+            addSystemMessage('📤 Sending test push... Close the app NOW to test!');
+            
+            const timestamp = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            const data = {
+                action: 'sendTestPush',
+                userName: state.userName,
+                testNum: 1,
+                timestamp: timestamp,
+                subscription: JSON.stringify(state.pushSubscription)
+            };
+            
+            try {
+                await fetch(state.scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                console.log('✅ Server test push requested');
+            } catch (error) {
+                console.error('❌ Failed to request server push:', error);
+                addSystemMessage('❌ Failed to send test push: ' + error.message);
+            }
+        }
+
+        // =====================================================
+        // Notification Status
+        // =====================================================
+
+        function checkNotificationPermission() {
+            const dot = document.getElementById('notifStatusDot');
+            const text = document.getElementById('notifStatusText');
+            const statusDot = document.getElementById('statusDot');
+            if (!dot || !text) return;
+
+            dot.className = 'notif-status-dot';
+            
+            if (!('Notification' in window)) {
+                dot.classList.add('denied');
+                text.textContent = 'Notifications not supported';
+                return;
+            }
+
+            const permission = Notification.permission;
+            const hasPush = !!state.pushSubscription;
+
+            if (permission === 'granted' && hasPush) {
+                dot.classList.add('granted');
+                text.textContent = '✓ Push notifications active (works in background!)';
+                statusDot?.classList.remove('no-push');
+            } else if (permission === 'granted') {
+                dot.classList.add('default');
+                text.textContent = 'Notifications allowed, but push not set up';
+                statusDot?.classList.add('no-push');
+            } else if (permission === 'denied') {
+                dot.classList.add('denied');
+                text.textContent = '✗ Notifications blocked';
+                statusDot?.classList.add('no-push');
+            } else {
+                dot.classList.add('default');
+                text.textContent = 'Push notifications not enabled';
+                statusDot?.classList.add('no-push');
+            }
+        }
+
+        function showNotificationBannerIfNeeded() {
+            // Only show banner after we've actually checked the subscription status
+            if (!subscriptionCheckComplete) {
+                console.log('⏳ Subscription check not complete yet, skipping banner');
+                return;
+            }
+            
+            const permission = ('Notification' in window) ? Notification.permission : 'unsupported';
+            const hasPush = !!state.pushSubscription;
+            
+            console.log('🔔 Banner check - Permission:', permission, 'Has push:', hasPush);
+            
+            if (permission === 'granted' && hasPush) {
+                // User has everything set up - hide banner
+                document.getElementById('notifBanner')?.classList.remove('show');
+            } else if (permission === 'denied') {
+                // User denied - hide banner (they need to change browser settings)
+                document.getElementById('notifBanner')?.classList.remove('show');
+            } else {
+                // Show banner - user needs to enable
+                document.getElementById('notifBanner')?.classList.add('show');
+            }
+        }
+
+        // =====================================================
+        // Install Prompt
+        // =====================================================
+
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBanner')?.classList.add('show');
+            document.getElementById('installBtn')?.classList.add('show');
+        });
+
+        async function installApp() {
+            if (!deferredPrompt) {
+                addSystemMessage('📱 In Chrome: tap ⋮ menu → "Add to Home Screen"');
+                return;
+            }
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') addSystemMessage('🎉 SWETA installed!');
+            deferredPrompt = null;
+            document.getElementById('installBanner')?.classList.remove('show');
+            document.getElementById('installBtn')?.classList.remove('show');
+        }
+
+        document.getElementById('installBannerBtn')?.addEventListener('click', installApp);
+        function dismissInstallBanner() { document.getElementById('installBanner')?.classList.remove('show'); }
+
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            document.getElementById('installBanner')?.classList.remove('show');
+            document.getElementById('installBtn')?.classList.remove('show');
+            addSystemMessage('🎉 SWETA installed!');
+        });
+
+        // =====================================================
+        // Setup Flow
+        // =====================================================
+
+        function setupStep2() {
+            const name = document.getElementById('setupName').value.trim();
+            if (!name) { alert('Please enter your name!'); return; }
+            state.userName = name;
+            document.getElementById('setupStep1').style.display = 'none';
+            document.getElementById('setupStep2').style.display = 'block';
+        }
+
+        function backToStep1() {
+            document.getElementById('setupStep2').style.display = 'none';
+            document.getElementById('setupStep1').style.display = 'block';
+        }
+
+        function setupStep3() {
+            const question = document.getElementById('setupQuestion').value.trim();
+            const answer = document.getElementById('setupAnswer').value.trim();
+            if (!question || !answer) { alert('Please fill in both fields!'); return; }
+            state.securityQuestion = question;
+            state.securityAnswer = answer;
+            document.getElementById('setupStep2').style.display = 'none';
+            document.getElementById('setupStep3').style.display = 'block';
+        }
+
+        function backToStep2() {
+            document.getElementById('setupStep3').style.display = 'none';
+            document.getElementById('setupStep2').style.display = 'block';
+        }
+
+        async function completeSetup() {
+            const scriptUrl = document.getElementById('setupScriptUrl').value.trim();
+            if (!scriptUrl) { alert('Please enter your Google Apps Script URL!'); return; }
+            
+            state.scriptUrl = scriptUrl;
+            state.isSetupComplete = true;
+            
+            try { await createUserSheet(state.userName); } catch (e) { console.error(e); }
+            
+            saveState();
+            document.getElementById('setupPanel').classList.remove('show');
+            document.getElementById('mainContainer').style.display = 'flex';
+            
+            addBotMessage(`안녕하세요 ${state.userName}! 💜 I'm SWETA! I'll help you track your work. 화이팅! 💪\n\nPlease tap the notification banner to enable push notifications for reminders even when the app is closed!`);
+            
+            // Show banner and invoice toolbar after setup
+            subscriptionCheckComplete = true;
+            showNotificationBannerIfNeeded();
+            document.getElementById('invoiceToolbar').classList.add('show');
+
+            startScheduler();
+        }
+
+        // =====================================================
+        // Settings
+        // =====================================================
+
+        function openSettings() {
+            document.getElementById('configName').value = state.userName;
+            document.getElementById('configStartTime').value = state.startTime;
+            document.getElementById('configEndTime').value = state.endTime;
+            document.getElementById('configInterval').value = state.interval;
+            document.getElementById('configScriptUrl').value = state.scriptUrl;
+            document.getElementById('configTargetHours').value = state.targetHours;
+            document.getElementById('configMonthlyRate').value = state.monthlyRate || '';
+            document.getElementById('configInvoiceEmail').value = state.invoiceEmail || '';
+            document.getElementById('configInvoiceNumber').value = state.invoiceNumber || 1;
+            // Display lastInvoiceDate as DD/MM/YYYY for editing
+            if (state.lastInvoiceDate) {
+                const d = new Date(state.lastInvoiceDate);
+                document.getElementById('configLastInvoiceDate').value = d.toLocaleDateString('en-IN');
+            } else {
+                document.getElementById('configLastInvoiceDate').value = '';
+            }
+            updateStats();
+            checkNotificationPermission();
+            checkPushSubscription();
+            document.getElementById('configPanel').classList.add('show');
+        }
+
+        function closeSettings() { 
+            // DON'T stop test mode when closing settings!
+            // Test mode should persist.
+            document.getElementById('configPanel').classList.remove('show'); 
+        }
+
+        async function saveSettings() {
+            state.userName = document.getElementById('configName').value.trim();
+            state.startTime = document.getElementById('configStartTime').value;
+            state.endTime = document.getElementById('configEndTime').value;
+            state.interval = parseInt(document.getElementById('configInterval').value) || 60;
+            state.scriptUrl = document.getElementById('configScriptUrl').value.trim();
+            state.targetHours = parseInt(document.getElementById('configTargetHours').value) || 175;
+            state.monthlyRate = parseFloat(document.getElementById('configMonthlyRate').value) || 0;
+            state.invoiceEmail = document.getElementById('configInvoiceEmail').value.trim();
+            state.invoiceNumber = parseInt(document.getElementById('configInvoiceNumber').value) || 1;
+            // Parse lastInvoiceDate from DD/MM/YYYY
+            const rawDate = document.getElementById('configLastInvoiceDate').value.trim();
+            if (rawDate) {
+                const parts = rawDate.split('/');
+                if (parts.length === 3) {
+                    const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                    state.lastInvoiceDate = d.toISOString();
+                }
+            } else {
+                state.lastInvoiceDate = '';
+            }
+            
+            saveState();
+            
+            // Update subscription settings on server
+            if (state.pushSubscription) {
+                await saveSubscriptionToServer(state.pushSubscription);
+            }
+            
+            closeSettings();
+            addSystemMessage('Settings saved! 💾');
+            startScheduler();
+        }
+
+        function clearAllData() {
+            if (confirm('Clear ALL data? This cannot be undone!')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // =====================================================
+        // State Persistence
+        // =====================================================
+
+        function saveState() {
+            localStorage.setItem('sweta_state', JSON.stringify({
+                userName: state.userName,
+                securityQuestion: state.securityQuestion,
+                securityAnswer: state.securityAnswer,
+                scriptUrl: state.scriptUrl,
+                startTime: state.startTime,
+                endTime: state.endTime,
+                interval: state.interval,
+                targetHours: state.targetHours,
+                chatHistory: state.chatHistory.slice(-200),
+                todayTasks: state.todayTasks,
+                taskHistory: (state.taskHistory || []).slice(-2000),
+                monthlyMinutes: state.monthlyMinutes,
+                todayMinutes: state.todayMinutes,
+                ignoredCount: state.ignoredCount,
+                lastCheckTime: state.lastCheckTime,
+                lastSummaryTime: state.lastSummaryTime,
+                lastDailyStatsTime: state.lastDailyStatsTime,
+                lastWeeklyReminder: state.lastWeeklyReminder,
+                isSetupComplete: state.isSetupComplete,
+                monthlyRate: state.monthlyRate,
+                invoiceEmail: state.invoiceEmail,
+                invoiceNumber: state.invoiceNumber,
+                lastInvoiceDate: state.lastInvoiceDate
+            }));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('sweta_state');
+            if (saved) {
+                Object.assign(state, JSON.parse(saved));
+                
+                const today = new Date().toDateString();
+                const lastCheck = state.lastCheckTime ? new Date(state.lastCheckTime).toDateString() : null;
+                if (lastCheck !== today) {
+                    state.todayTasks = [];
+                    state.todayMinutes = 0;
+                    state.ignoredCount = 0;
+                }
+                
+                const thisMonth = new Date().getMonth();
+                const lastMonth = state.lastCheckTime ? new Date(state.lastCheckTime).getMonth() : null;
+                if (lastMonth !== null && lastMonth !== thisMonth) state.monthlyMinutes = 0;
+            }
+        }
+
+        // =====================================================
+        // Chat
+        // =====================================================
+
+        function loadChatHistory() {
+            const container = document.getElementById('chatContainer');
+            container.innerHTML = '';
+            
+            // Sort by timestamp to ensure correct order
+            const sortedHistory = [...state.chatHistory].sort((a, b) => {
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+            
+            // Update state with sorted history
+            state.chatHistory = sortedHistory;
+            
+            // Display last 50 messages
+            sortedHistory.slice(-50).forEach(msg => {
+                addMessageToUI(msg.text, msg.sender, msg.timestamp, false);
+            });
+            scrollToBottom();
+        }
+
+        function saveChatMessage(text, sender) {
+            const timestamp = new Date().toISOString();
+            state.chatHistory.push({ text, sender, timestamp });
+            saveState();
+            return timestamp;
+        }
+
+        function wasLastMessageWelcomeBack() {
+            if (state.chatHistory.length === 0) return false;
+            
+            // Check last few bot messages
+            const recentBotMessages = state.chatHistory
+                .filter(msg => msg.sender === 'bot')
+                .slice(-3);
+            
+            if (recentBotMessages.length === 0) return false;
+            
+            const lastBotMessage = recentBotMessages[recentBotMessages.length - 1];
+            const text = lastBotMessage.text.toLowerCase();
+            
+            // Check if it contains welcome back patterns
+            return text.includes('welcome back') || 
+                   text.includes('enjoy your sunday') ||
+                   text.includes('outside working hours');
+        }
+
+        function setupEventListeners() {
+            document.getElementById('messageInput')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+            
+            // Save state when app is about to close
+            window.addEventListener('beforeunload', () => {
+                saveState();
+            });
+            
+            // Check notifications when app becomes visible
+            document.addEventListener('visibilitychange', () => { 
+                if (!document.hidden) {
+                    checkNotificationPermission();
+                    checkPushSubscription().then(() => {
+                        showNotificationBannerIfNeeded();
+                    });
+                }
+            });
+        }
+
+        function updateOnlineStatus() {
+            state.isOnline = navigator.onLine;
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (state.isOnline) {
+                dot?.classList.remove('offline');
+                if (text) text.textContent = 'Online';
+                syncOfflineData();
+            } else {
+                dot?.classList.add('offline');
+                if (text) text.textContent = 'Offline';
+            }
+        }
+
+        function updateCurrentTime() {
+            const el = document.getElementById('currentTime');
+            if (el) el.textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) + ' IST';
+        }
+
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+            return isToday ? timeStr : date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) + ' ' + timeStr;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            input.value = '';
+            addUserMessage(message);
+            
+            if (state.awaitingDuration) { await handleDurationResponse(message); return; }
+            await processUserMessage(message);
+        }
+
+        function addUserMessage(text) {
+            const timestamp = saveChatMessage(text, 'user');
+            addMessageToUI(text, 'user', timestamp);
+            state.ignoredCount = 0;
+            saveState();
+        }
+
+        function addBotMessage(text) {
+            const timestamp = saveChatMessage(text, 'bot');
+            addMessageToUI(text, 'bot', timestamp);
+        }
+
+        function addSystemMessage(text) {
+            addMessageToUI(text, 'system', new Date().toISOString());
+        }
+
+        function addMessageToUI(text, sender, timestamp, scroll = true) {
+            const container = document.getElementById('chatContainer');
+            const wrapper = document.createElement('div');
+            wrapper.className = `message-wrapper ${sender}`;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = text;
+            wrapper.appendChild(messageDiv);
+            
+            if (sender !== 'system' && timestamp) {
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-timestamp';
+                timeDiv.textContent = formatTimestamp(timestamp);
+                wrapper.appendChild(timeDiv);
+            }
+            
+            container.appendChild(wrapper);
+            if (scroll) scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chatContainer');
+            if (container) container.scrollTop = container.scrollHeight;
+        }
+
+        // =====================================================
+        // Message Processing
+        // =====================================================
+
+        async function processUserMessage(message) {
+            const lowerMsg = message.toLowerCase();
+            if (lowerMsg.includes('nothing') || lowerMsg.includes('break')) {
+                addBotMessage('Taking a break? That\'s okay! 💤');
+                return;
+            }
+            
+            const timeSlot = getCurrentTimeSlot();
+            await logWorkToSheet(message, timeSlot, 0);
+
+            state.pendingTask = { message, timeSlot };
+            state.awaitingDuration = true;
+            state.todayTasks.push({ task: message, timeSlot, duration: 0 });
+            // Also store in persistent taskHistory for invoice generation
+            if (!state.taskHistory) state.taskHistory = [];
+            state.taskHistory.push({
+                workDone: message,
+                timeSlot,
+                date: new Date().toLocaleDateString('en-IN'),
+                loggedAt: new Date().toISOString()
+            });
+            saveState();
+            
+            addBotMessage(`대박! Got it! 📝 "${message}" logged for ${timeSlot}. How long did that take? (e.g., "30 min", "1h 30m")`);
+        }
+
+        async function handleDurationResponse(response) {
+            const minutes = parseDuration(response);
+            
+            if (minutes > 0) {
+                state.todayMinutes += minutes;
+                state.monthlyMinutes += minutes;
+                if (state.todayTasks.length > 0) state.todayTasks[state.todayTasks.length - 1].duration = minutes;
+                if (state.pendingTask) await logWorkToSheet(state.pendingTask.message, state.pendingTask.timeSlot, minutes);
+                
+                const msgs = [
+                    `완벽해! ${formatDuration(minutes)} logged! 화이팅! 💪`,
+                    `Yay! ${formatDuration(minutes)} added! ✨`,
+                    `${formatDuration(minutes)}! 대단해! 🌟`
+                ];
+                addBotMessage(msgs[Math.floor(Math.random() * msgs.length)]);
+                updateStats();
+            } else {
+                addBotMessage(`Couldn't understand that, but logged without duration! 💜`);
+            }
+            
+            state.awaitingDuration = false;
+            state.pendingTask = null;
+            saveState();
+        }
+
+        function parseDuration(text) {
+            const lowerText = text.toLowerCase().trim();
+            let totalMinutes = 0;
+            const hourMatch = lowerText.match(/(\d+\.?\d*)\s*(h|hr|hrs|hour|hours)/);
+            const minMatch = lowerText.match(/(\d+)\s*(m|min|mins|minute|minutes)/);
+            if (hourMatch) totalMinutes += parseFloat(hourMatch[1]) * 60;
+            if (minMatch) totalMinutes += parseInt(minMatch[1]);
+            if (!hourMatch && !minMatch) {
+                const numMatch = lowerText.match(/^(\d+)$/);
+                if (numMatch) totalMinutes = parseInt(numMatch[1]);
+            }
+            return Math.round(totalMinutes);
+        }
+
+        function formatDuration(minutes) {
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            if (h > 0 && m > 0) return `${h}h ${m}m`;
+            if (h > 0) return `${h}h`;
+            return `${m}m`;
+        }
+
+        function getCurrentTimeSlot() {
+            const now = new Date();
+            const day = now.getDay();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const dateStr = now.toLocaleDateString('en-IN');
+            
+            if (day === 0) return `Sunday work ${dateStr}`;
+            if (hours < 8 || (hours === 8 && minutes < 30)) return `misc ${dateStr}`;
+            
+            const [endHour, endMin] = state.endTime.split(':').map(Number);
+            if (hours > endHour || (hours === endHour && minutes > endMin)) return `misc ${dateStr}`;
+            
+            let slotEndHour = hours;
+            let slotEndMin = minutes >= 30 ? 30 : 0;
+            if (slotEndMin === 0) { slotEndHour--; slotEndMin = 30; }
+            
+            const formatTime = (h, m) => {
+                const hour12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+                return `${hour12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+            };
+            
+            return `${formatTime(slotEndHour, slotEndMin)} - ${formatTime(slotEndHour + 1, slotEndMin)}`;
+        }
+
+        // =====================================================
+        // Google Sheets Integration
+        // =====================================================
+
+        async function logWorkToSheet(workDone, timeSlot, duration) {
+            if (!state.scriptUrl) return false;
+            const data = {
+                action: 'logWork',
+                userName: state.userName,
+                timestamp: new Date().toISOString(),
+                date: new Date().toLocaleDateString('en-IN'),
+                timeSlot, workDone, duration,
+                loggedAt: new Date().toLocaleTimeString('en-IN')
+            };
+            try {
+                await fetch(state.scriptUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                return true;
+            } catch (error) {
+                queueOfflineData(data);
+                return false;
+            }
+        }
+
+        async function createUserSheet(userName) {
+            if (!state.scriptUrl) return;
+            try {
+                await fetch(state.scriptUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'createSheet', userName }) });
+            } catch (error) { console.error(error); }
+        }
+
+        function queueOfflineData(data) {
+            const queue = JSON.parse(localStorage.getItem('sweta_offline_queue') || '[]');
+            queue.push(data);
+            localStorage.setItem('sweta_offline_queue', JSON.stringify(queue));
+        }
+
+        async function syncOfflineData() {
+            if (!state.isOnline || !state.scriptUrl) return;
+            const queue = JSON.parse(localStorage.getItem('sweta_offline_queue') || '[]');
+            if (!queue.length) return;
+            
+            const failed = [];
+            for (const data of queue) {
+                try { await fetch(state.scriptUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } 
+                catch { failed.push(data); }
+            }
+            localStorage.setItem('sweta_offline_queue', JSON.stringify(failed));
+            if (queue.length > failed.length) addSystemMessage(`📤 Synced ${queue.length - failed.length} entries!`);
+        }
+
+        // =====================================================
+        // Scheduler (for when app is open)
+        // =====================================================
+
+        let schedulerInterval = null;
+
+        function startScheduler() {
+            if (schedulerInterval) clearInterval(schedulerInterval);
+            appJustOpened = true;
+            setTimeout(() => {
+                checkSchedule();
+                schedulerInterval = setInterval(checkSchedule, 15000);
+            }, 2000);
+        }
+
+        function checkSchedule() {
+            const now = new Date();
+            const day = now.getDay();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            
+            if (state.isOnline) syncOfflineData();
+            if (!state.isSetupComplete) return;
+            
+            const [startHour, startMin] = state.startTime.split(':').map(Number);
+            const [endHour, endMin] = state.endTime.split(':').map(Number);
+            
+            const currentTime = hours * 60 + minutes;
+            const startTime = startHour * 60 + startMin;
+            const endTime = endHour * 60 + endMin;
+            
+            const lastCheck = state.lastCheckTime ? new Date(state.lastCheckTime) : null;
+            const minsSinceLastCheck = lastCheck ? (now - lastCheck) / (1000 * 60) : Infinity;
+            const lastCheckToday = lastCheck && lastCheck.toDateString() === now.toDateString();
+
+            if (appJustOpened) {
+                appJustOpened = false;
+                
+                if (state.chatHistory.length === 0) {
+                    addBotMessage(`안녕하세요 ${state.userName}! 💜 I'm SWETA! 화이팅! 💪`);
+                    return;
+                }
+
+                // Don't send welcome back if the last message was already a welcome back
+                if (wasLastMessageWelcomeBack()) {
+                    console.log('⏭️ Skipping welcome back - last message was already welcome back');
+                    return;
+                }
+
+                if (day === 0) {
+                    if (hours >= 12 && shouldTriggerDaily('sunday')) sendScheduledMessage('sunday');
+                    else addBotMessage(`Welcome back, ${state.userName}! 💜 Enjoy your Sunday!`);
+                    return;
+                }
+
+                if (currentTime < startTime || currentTime > endTime) {
+                    addBotMessage(`Welcome back, ${state.userName}! 💜 Outside working hours. Relax! 😊`);
+                    return;
+                }
+
+                if (minsSinceLastCheck >= state.interval - 2 || !lastCheckToday) {
+                    state.ignoredCount++;
+                    state.lastCheckTime = now.toISOString();
+                    saveState();
+                    if (state.ignoredCount >= 3) {
+                        addBotMessage(`⚠️ Welcome back ${state.userName}! ${state.ignoredCount} missed check-ins! What have you been up to? 📋`);
+                    } else {
+                        addBotMessage(`Welcome back, ${state.userName}! 💜 What have you been working on?`);
+                    }
+                } else {
+                    addBotMessage(`Welcome back, ${state.userName}! 💜`);
+                }
+                return;
+            }
+
+            // Regular checks (push notifications handle background, this is for foreground)
+            if (day === 0) return;
+
+            if (currentTime >= startTime && currentTime < startTime + 30 && shouldTriggerDaily('morning')) {
+                sendScheduledMessage('morning');
+                return;
+            }
+
+            if (currentTime > startTime && currentTime <= endTime) {
+                if (minsSinceLastCheck >= state.interval - 2 || !lastCheckToday) {
+                    sendScheduledMessage('hourly');
+                }
+            }
+
+            // 3-hour summary
+            if (state.todayTasks.length > 0) {
+                const lastSummary = state.lastSummaryTime ? new Date(state.lastSummaryTime) : null;
+                const minsSinceLastSummary = lastSummary ? (now - lastSummary) / (1000 * 60) : Infinity;
+                if (minsSinceLastSummary >= 178) sendScheduledMessage('summary');
+            }
+
+            // Daily stats
+            if (hours >= 13) {
+                const lastStats = state.lastDailyStatsTime ? new Date(state.lastDailyStatsTime) : null;
+                const lastStatsToday = lastStats && lastStats.toDateString() === now.toDateString();
+                if (!lastStatsToday || (hours >= 18 && lastStats.getHours() < 18)) sendScheduledMessage('dailyStats');
+            }
+
+            // Weekly
+            if (day === 1 && hours >= 12) {
+                const lastWeekly = state.lastWeeklyReminder ? new Date(state.lastWeeklyReminder) : null;
+                if (!lastWeekly || (now - lastWeekly) / (1000 * 60 * 60 * 24) >= 6) sendScheduledMessage('weekly');
+            }
+        }
+
+        function shouldTriggerDaily(type) {
+            const key = `sweta_daily_${type}`;
+            const lastTrigger = localStorage.getItem(key);
+            const today = new Date().toDateString();
+            if (lastTrigger !== today) {
+                localStorage.setItem(key, today);
+                return true;
+            }
+            return false;
+        }
+
+        async function sendScheduledMessage(type) {
+            const now = new Date();
+            let message = '';
+
+            switch (type) {
+                case 'morning':
+                    message = `☀️ Good morning ${state.userName}! Hope you have a productive day! 🌸 Anything from last night or this morning to document? 📝`;
+                    break;
+                case 'hourly':
+                    state.ignoredCount++;
+                    state.lastCheckTime = now.toISOString();
+                    if (state.ignoredCount >= 3) {
+                        message = `⚠️ Hey ${state.userName}! ${state.ignoredCount} missed check-ins! Please document your work! 📋`;
+                    } else {
+                        message = [
+                            `⏰ Check-in time, ${state.userName}! What have you been up to?`,
+                            `💜 Hourly reminder! What did you accomplish?`
+                        ][Math.floor(Math.random() * 2)];
+                    }
+                    break;
+                case 'sunday':
+                    message = `🌟 Happy Sunday ${state.userName}! Enjoy your day off! Give Ishan a kiss for me! 💜`;
+                    break;
+                case 'summary':
+                    const taskList = state.todayTasks.map(t => `• ${t.task} (${t.timeSlot}${t.duration ? ', ' + formatDuration(t.duration) : ''})`).join('\n');
+                    message = `📋 Today so far:\n\n${taskList}\n\nAnything to add? 🤔`;
+                    state.lastSummaryTime = now.toISOString();
+                    break;
+                case 'dailyStats':
+                    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                    const daysRemaining = daysInMonth - now.getDate();
+                    const hoursNeeded = Math.max(0, state.targetHours * 60 - state.monthlyMinutes);
+                    message = `📊 Stats!\n\nToday: ${formatDuration(state.todayMinutes)}\nMonth: ${formatDuration(state.monthlyMinutes)}\n\nNeed ${formatDuration(hoursNeeded)} in ${daysRemaining} days! 화이팅! 💪`;
+                    state.lastDailyStatsTime = now.toISOString();
+                    break;
+                case 'weekly':
+                    message = `📢 Weekly Reminder: SWETA is artificially unintelligent! 🤖 Check your Google Sheet periodically! 💜`;
+                    state.lastWeeklyReminder = now.toISOString();
+                    break;
+            }
+
+            addBotMessage(message);
+            saveState();
+        }
+
+        // =====================================================
+        // Invoice Generation
+        // =====================================================
+
+        // Fetch tasks since last invoice date from server (GET) or fall back to local taskHistory
+        async function getInvoiceTasks() {
+            const today = new Date();
+            const lastInvDate = state.lastInvoiceDate
+                ? new Date(state.lastInvoiceDate)
+                : new Date(today.getFullYear(), today.getMonth(), 1);
+
+            const startDate = lastInvDate.toLocaleDateString('en-IN');
+            const endDate = today.toLocaleDateString('en-IN');
+
+            if (state.scriptUrl) {
+                try {
+                    const url = `${state.scriptUrl}?action=getTasksInRange&userName=${encodeURIComponent(state.userName)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+                    const resp = await fetch(url, { redirect: 'follow' });
+                    const data = await resp.json();
+                    if (data.tasks && data.tasks.length > 0) {
+                        return data.tasks;
+                    }
+                } catch (e) {
+                    console.log('Server task fetch failed, using local data:', e.message);
+                }
+            }
+
+            // Fallback: local taskHistory
+            const history = state.taskHistory || [];
+            return history.filter(t => {
+                if (!t.date) return true;
+                const parts = t.date.split('/');
+                if (parts.length !== 3) return true;
+                const taskDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                return taskDate >= lastInvDate && taskDate <= today;
+            });
+        }
+
+        function numberToWords(num) {
+            if (!num || num <= 0) return 'Zero Rupees Only';
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+                'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+                'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+            function convert(n) {
+                if (n === 0) return '';
+                if (n < 20) return ones[n] + ' ';
+                if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] + ' ' : ' ');
+                if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred ' + convert(n % 100);
+                if (n < 100000) return convert(Math.floor(n / 1000)) + 'Thousand ' + convert(n % 1000);
+                if (n < 10000000) return convert(Math.floor(n / 100000)) + 'Lakh ' + convert(n % 100000);
+                return convert(Math.floor(n / 10000000)) + 'Crore ' + convert(n % 10000000);
+            }
+
+            const intPart = Math.floor(num);
+            const decPart = Math.round((num - intPart) * 100);
+            let result = convert(intPart).trim().replace(/\s+/g, ' ') + ' Rupees';
+            if (decPart > 0) result += ' and ' + convert(decPart).trim().replace(/\s+/g, ' ') + ' Paise';
+            return result + ' Only';
+        }
+
+        async function generateInvoicePDF() {
+            if (typeof window.jspdf === 'undefined') {
+                addSystemMessage('⚠️ PDF library not loaded. Please check your connection and try again.');
+                return null;
+            }
+
+            addSystemMessage('📊 Fetching tasks...');
+            let tasks = [];
+            try { tasks = await getInvoiceTasks(); } catch (e) { console.error(e); }
+
+            // Deduplicate
+            const seen = new Set();
+            const uniqueTasks = [];
+            tasks.forEach(t => {
+                const key = (t.workDone || String(t)).trim();
+                if (key && !seen.has(key)) { seen.add(key); uniqueTasks.push(key); }
+            });
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pw = doc.internal.pageSize.getWidth();
+            const ml = 15, mr = 15;
+            const cw = pw - ml - mr; // 180mm
+            let y = 12;
+
+            const R = (x, y, w, h, s) => doc.rect(x, y, w, h, s || 'S');
+            const L = (x1, y1, x2, y2) => doc.line(x1, y1, x2, y2);
+            const T = (t, x, y, o) => { if (t !== undefined && t !== null) doc.text(String(t), x, y, o || {}); };
+            const F = (sz, st) => { doc.setFont('helvetica', st || 'normal'); doc.setFontSize(sz); };
+
+            // ── TITLE ──
+            F(12, 'bold');
+            T('INVOICE', pw / 2, y, { align: 'center' });
+            y += 4;
+
+            // ── SENDER + INVOICE# BOX ──
+            const sH = 40;
+            R(ml, y, cw, sH);
+
+            // Right sub-box for Invoice# and Date
+            const rbX = ml + cw * 0.56, rbW = cw * 0.44;
+            const hbY = y + sH * 0.28, hbH = sH * 0.6;
+            doc.setFillColor(220, 220, 220);
+            R(rbX, hbY, rbW / 2, hbH / 2, 'FD');
+            R(rbX + rbW / 2, hbY, rbW / 2, hbH / 2, 'FD');
+            doc.setFillColor(255, 255, 255);
+            R(rbX, hbY + hbH / 2, rbW / 2, hbH / 2);
+            R(rbX + rbW / 2, hbY + hbH / 2, rbW / 2, hbH / 2);
+
+            F(7.5, 'bold');
+            T('INVOICE #', rbX + rbW / 4, hbY + 4, { align: 'center' });
+            T('DATE', rbX + rbW * 3 / 4, hbY + 4, { align: 'center' });
+
+            F(9, 'normal');
+            T(state.invoiceNumber || 1, rbX + rbW / 4, hbY + hbH * 0.77, { align: 'center' });
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+            F(7, 'normal');
+            T(dateStr, rbX + rbW * 3 / 4, hbY + hbH * 0.77, { align: 'center' });
+
+            // Sender details
+            const senderRows = [
+                ['Your Name', state.userName || 'Anjali'],
+                ['Your Address Line 1', '101, Vijaya Heritage'],
+                ['Your Address Line 2', '11th Road, Chembur'],
+                ['Your Address Line 3', 'Mumbai - 400071'],
+                ['Contact No.:', '8104959546'],
+                ['Email Id :', 'anjali@adhyayan.asia'],
+            ];
+            let sy = y + 6;
+            senderRows.forEach(([lbl, val]) => {
+                F(8, 'normal'); T(lbl, ml + 2, sy);
+                F(8, 'normal'); T(val, ml + 40, sy);
+                sy += 5.3;
+            });
+            y += sH;
+
+            // ── BILL TO ──
+            const btH = 46;
+            R(ml, y, cw * 0.58, btH);
+            doc.setFillColor(220, 220, 220);
+            R(ml + 3, y + 2, 32, 6, 'FD');
+            doc.setFillColor(255, 255, 255);
+            F(8, 'bold'); T('BILL TO', ml + 3 + 16, y + 6.5, { align: 'center' });
+            F(8.5, 'bold'); T('Adhyayan Quality Education Services Pvt. Ltd.', ml + 2, y + 15);
+            F(8, 'normal');
+            const btLines = [
+                'A - 17, Floor - 01, Royal Industrial Estate,',
+                'Sewree Wadala Road No. 26,',
+                'Wadala, Mumbai 400031.',
+                'Maharashtra.',
+                'Contact No.: 91-97731 87331'
+            ];
+            let by = y + 21;
+            btLines.forEach(l => { T(l, ml + 2, by); by += 4.5; });
+            y += btH;
+
+            // ── TABLE HEADER ──
+            const c1 = cw * 0.44, c2 = cw * 0.13, c3 = cw * 0.13, c4 = cw * 0.15, c5 = cw * 0.15;
+            const thH = 12;
+            doc.setFillColor(220, 220, 220);
+            R(ml, y, cw, thH, 'FD');
+            doc.setFillColor(255, 255, 255);
+            R(ml, y, c1, thH); R(ml + c1, y, c2, thH); R(ml + c1 + c2, y, c3, thH);
+            R(ml + c1 + c2 + c3, y, c4, thH); R(ml + c1 + c2 + c3 + c4, y, c5, thH);
+            F(9, 'bold'); T('Description', ml + c1 / 2, y + 7.5, { align: 'center' });
+            F(7.5, 'bold');
+            T('Expected', ml + c1 + c2 / 2, y + 4.5, { align: 'center' });
+            T('working hours', ml + c1 + c2 / 2, y + 9, { align: 'center' });
+            T('Actual working', ml + c1 + c2 + c3 / 2, y + 4.5, { align: 'center' });
+            T('hours', ml + c1 + c2 + c3 / 2, y + 9, { align: 'center' });
+            T('Monthly', ml + c1 + c2 + c3 + c4 / 2, y + 4.5, { align: 'center' });
+            T('amount', ml + c1 + c2 + c3 + c4 / 2, y + 9, { align: 'center' });
+            T('AMOUNT', ml + c1 + c2 + c3 + c4 + c5 / 2, y + 7.5, { align: 'center' });
+            y += thH;
+
+            // ── DATA ROW ──
+            const lastInvDate = state.lastInvoiceDate
+                ? new Date(state.lastInvoiceDate)
+                : new Date(today.getFullYear(), today.getMonth(), 1);
+            const periodStart = lastInvDate.toLocaleDateString('en-IN');
+            const periodEnd = today.toLocaleDateString('en-IN');
+            const invoiceMonthYear = lastInvDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const actualHours = Math.round(state.monthlyMinutes / 60 * 10) / 10;
+            const expectedHours = state.targetHours || 195;
+            const monthlyRate = state.monthlyRate || 0;
+            const rateStr = monthlyRate ? monthlyRate.toLocaleString('en-IN') : '';
+
+            // Build description lines
+            const lh = 4.5;
+            const descLines = [
+                { t: 'Professional Fees towards Independent Consultant as ', b: false },
+                { t: '"Programmes Manager"', b: true },
+                { t: `for the month of ${invoiceMonthYear}`, b: false },
+                { t: `(Period: From ${periodStart} to ${periodEnd})`, b: false },
+                { t: '', b: false },
+                { t: `Total Working Hours:  ${actualHours}`, b: true },
+                { t: '', b: false },
+                { t: 'Deliverables:', b: true },
+                ...uniqueTasks.map(task => ({ t: `\u2022 ${task}`, b: false }))
+            ];
+
+            const drH = Math.max(65, descLines.length * lh + 14);
+            R(ml, y, c1, drH); R(ml + c1, y, c2, drH); R(ml + c1 + c2, y, c3, drH);
+            R(ml + c1 + c2 + c3, y, c4, drH); R(ml + c1 + c2 + c3 + c4, y, c5, drH);
+
+            // Render description text - handle line 0+1 as inline
+            let dy = y + 5;
+            let i = 0;
+            while (i < descLines.length) {
+                const item = descLines[i];
+                if (item.t === '') { dy += lh / 2; i++; continue; }
+                // Check if next line should be inline (bold continuation)
+                if (!item.b && i + 1 < descLines.length && descLines[i + 1].b &&
+                    descLines[i + 1].t.startsWith('"')) {
+                    F(8, 'normal');
+                    T(item.t, ml + 2, dy);
+                    const w1 = doc.getTextWidth(item.t);
+                    F(8, 'bold');
+                    T(descLines[i + 1].t, ml + 2 + w1, dy);
+                    i += 2;
+                } else {
+                    F(8, item.b ? 'bold' : 'normal');
+                    // Word-wrap long task names
+                    const wrapped = doc.splitTextToSize(item.t, c1 - 5);
+                    wrapped.forEach((wl, wi) => { if (wi > 0) dy += lh; T(wl, ml + 2, dy); });
+                    i++;
+                }
+                dy += lh;
+            }
+
+            // Values in right columns
+            const midY = y + drH / 2;
+            F(9, 'normal');
+            T(String(expectedHours), ml + c1 + c2 / 2, midY, { align: 'center' });
+            T(String(actualHours), ml + c1 + c2 + c3 / 2, midY, { align: 'center' });
+            T(rateStr, ml + c1 + c2 + c3 + c4 / 2, midY, { align: 'center' });
+            T(rateStr, ml + c1 + c2 + c3 + c4 + c5 / 2, midY, { align: 'center' });
+            y += drH;
+
+            // ── TOTAL ROW ──
+            const totH = 10;
+            R(ml, y, c1 + c2 + c3, totH);
+            R(ml + c1 + c2 + c3, y, c4, totH);
+            R(ml + c1 + c2 + c3 + c4, y, c5, totH);
+            const amtWords = numberToWords(monthlyRate);
+            F(7.5, 'normal');
+            const wrappedWords = doc.splitTextToSize(`Amount In Words: ${amtWords}`, c1 + c2 + c3 - 4);
+            T(wrappedWords[0], ml + 2, y + 6.5);
+            F(9, 'bold'); T('Total -', ml + c1 + c2 + c3 + c4 / 2, y + 6.5, { align: 'center' });
+            F(9, 'normal'); T(rateStr, ml + c1 + c2 + c3 + c4 + c5 / 2, y + 6.5, { align: 'center' });
+            y += totH + 5;
+
+            // ── BANK DETAILS ──
+            const bankH = 52;
+            const bankW = cw * 0.6;
+            R(ml, y, bankW, bankH);
+            R(ml + bankW, y, cw - bankW, bankH);
+            F(9, 'bold'); T('Bank Details :', ml + 2, y + 6);
+            L(ml, y + 8, ml + bankW, y + 8);
+            const bankRows = [
+                ['Name of Account :', 'Anjali Ramesh'],
+                ['Name of Bank :', 'HDFC Bank'],
+                ['Address of Bank Branch :', 'D/33, NDSE/1, South Extension,'],
+                ['', 'New Delhi, Delhi 110049'],
+                ['Bank Account No.:', '50100621854022'],
+                ['Type of Account :', 'Savings'],
+                ['IFSC Code :', 'HDFC0000319'],
+                ['PAN No.', 'EBPPR6073A'],
+            ];
+            let bankY = y + 12;
+            bankRows.forEach(([lbl, val]) => {
+                if (lbl) { F(7.5, 'bold'); T(lbl, ml + 2, bankY); }
+                F(7.5, 'normal'); T(val, ml + 44, bankY);
+                bankY += 4.8;
+            });
+
+            // Signature
+            const sigX = ml + bankW + (cw - bankW) / 2;
+            F(10, 'italic'); T('Anjali Ramesh', sigX, y + bankH - 8, { align: 'center' });
+            L(sigX - 22, y + bankH - 4, sigX + 22, y + bankH - 4);
+
+            return doc;
+        }
+
+        async function generateAndPreviewInvoice() {
+            const today = new Date();
+            const lastInvDate = state.lastInvoiceDate
+                ? new Date(state.lastInvoiceDate)
+                : new Date(today.getFullYear(), today.getMonth(), 1);
+            let tasks = [];
+            try { tasks = await getInvoiceTasks(); } catch (e) {}
+            const seen = new Set();
+            const unique = tasks.filter(t => {
+                const k = (t.workDone || String(t)).trim();
+                return k && !seen.has(k) && seen.add(k);
+            });
+            const period = `${lastInvDate.toLocaleDateString('en-IN')} to ${today.toLocaleDateString('en-IN')}`;
+            const hrs = Math.round(state.monthlyMinutes / 60 * 10) / 10;
+            const rate = state.monthlyRate ? `₹${Number(state.monthlyRate).toLocaleString('en-IN')}` : 'not set (add in Settings)';
+            addSystemMessage(`📋 Invoice Preview\n\nInvoice #${state.invoiceNumber || 1}\nPeriod: ${period}\nHours: ${hrs} / ${state.targetHours || 195} expected\nAmount: ${rate}\nDeliverables: ${unique.length} unique tasks\n\nUse Download or Email to get the PDF!`);
+        }
+
+        async function downloadInvoice() {
+            addSystemMessage('📄 Generating invoice PDF...');
+            try {
+                const doc = await generateInvoicePDF();
+                if (!doc) return;
+                const monthName = (state.lastInvoiceDate ? new Date(state.lastInvoiceDate) : new Date())
+                    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).replace(' ', '_');
+                const fileName = `Invoice_${state.invoiceNumber || 1}_${monthName}.pdf`;
+                doc.save(fileName);
+                state.lastInvoiceDate = new Date().toISOString();
+                state.invoiceNumber = (parseInt(state.invoiceNumber) || 1) + 1;
+                saveState();
+                addSystemMessage(`✅ Invoice saved as ${fileName}!`);
+            } catch (e) {
+                addSystemMessage('❌ Failed: ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function sendInvoiceViaEmail() {
+            if (!state.invoiceEmail && !(navigator.share)) {
+                addSystemMessage('⚠️ Set Invoice Recipient Email in Settings first!');
+                return;
+            }
+            addSystemMessage('📄 Generating invoice...');
+            try {
+                const doc = await generateInvoicePDF();
+                if (!doc) return;
+                const today = new Date();
+                const monthName = (state.lastInvoiceDate ? new Date(state.lastInvoiceDate) : today)
+                    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).replace(' ', '_');
+                const fileName = `Invoice_${state.invoiceNumber || 1}_${monthName}.pdf`;
+
+                // Try Web Share API (mobile - lets user pick their email app)
+                const pdfBlob = doc.output('blob');
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: `Invoice #${state.invoiceNumber || 1}`,
+                        text: `Invoice for ${monthName.replace('_', ' ')} from ${state.userName || 'Anjali'}`
+                    });
+                    addSystemMessage('📤 Invoice shared!');
+                } else if (state.scriptUrl && state.invoiceEmail) {
+                    // Send via Google Apps Script
+                    addSystemMessage('📧 Sending via email...');
+                    const pdfBase64 = doc.output('datauristring').split(',')[1];
+                    const invoiceMonthYear = (state.lastInvoiceDate ? new Date(state.lastInvoiceDate) : today)
+                        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    await fetch(state.scriptUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'sendInvoiceEmail',
+                            email: state.invoiceEmail,
+                            subject: `Invoice #${state.invoiceNumber || 1} - ${invoiceMonthYear} - ${state.userName || 'Anjali'}`,
+                            body: `Dear Team,\n\nPlease find attached the invoice for ${invoiceMonthYear}.\n\nAmount: ₹${state.monthlyRate ? Number(state.monthlyRate).toLocaleString('en-IN') : ''}\n\nRegards,\n${state.userName || 'Anjali'}`,
+                            pdfBase64,
+                            fileName
+                        })
+                    });
+                    addSystemMessage(`📧 Invoice sent to ${state.invoiceEmail}!`);
+                } else {
+                    addSystemMessage('⚠️ No sharing available. Using download instead.');
+                    doc.save(fileName);
+                }
+
+                state.lastInvoiceDate = today.toISOString();
+                state.invoiceNumber = (parseInt(state.invoiceNumber) || 1) + 1;
+                saveState();
+            } catch (e) {
+                if (e.name === 'AbortError') { addSystemMessage('ℹ️ Share cancelled.'); return; }
+                addSystemMessage('❌ Failed: ' + e.message);
+                console.error(e);
+            }
+        }
+
+        // =====================================================
+        // Stats
+        // =====================================================
+
+        function updateStats() {
+            const now = new Date();
+            const daysRemaining = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+            document.getElementById('statsToday').textContent = formatDuration(state.todayMinutes);
+            document.getElementById('statsMonth').textContent = formatDuration(state.monthlyMinutes);
+            document.getElementById('statsDaysLeft').textContent = daysRemaining + ' days';
+        }
+    </script>
+</body>
+</html>
