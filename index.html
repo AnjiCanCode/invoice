@@ -401,6 +401,7 @@
     </style>
     <!-- jsPDF for invoice generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <!-- Setup Panel -->
@@ -1768,103 +1769,61 @@
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const pw = doc.internal.pageSize.getWidth();
+            const pw = doc.internal.pageSize.getWidth();   // 210
+            const ph = doc.internal.pageSize.getHeight();   // 297
             const ml = 15, mr = 15;
-            const cw = pw - ml - mr; // 180mm
-            let y = 12;
+            const cw = pw - ml - mr; // 180
+            let y = 15;
 
-            const R = (x, y, w, h, s) => doc.rect(x, y, w, h, s || 'S');
-            const L = (x1, y1, x2, y2) => doc.line(x1, y1, x2, y2);
-            const T = (t, x, y, o) => { if (t !== undefined && t !== null) doc.text(String(t), x, y, o || {}); };
-            const F = (sz, st) => { doc.setFont('helvetica', st || 'normal'); doc.setFontSize(sz); };
+            // ── Styles ──
+            const gray = [220, 220, 220];
+            const white = [255, 255, 255];
+            const black = [0, 0, 0];
+            const thinLine = 0.2;
 
             // ── TITLE ──
-            F(12, 'bold');
-            T('INVOICE', pw / 2, y, { align: 'center' });
-            y += 4;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('INVOICE', pw / 2, y, { align: 'center' });
+            y += 8;
 
-            // ── SENDER + INVOICE# BOX ──
-            const sH = 40;
-            R(ml, y, cw, sH);
-
-            // Right sub-box for Invoice# and Date
-            const rbX = ml + cw * 0.56, rbW = cw * 0.44;
-            const hbY = y + sH * 0.28, hbH = sH * 0.6;
-            doc.setFillColor(220, 220, 220);
-            R(rbX, hbY, rbW / 2, hbH / 2, 'FD');
-            R(rbX + rbW / 2, hbY, rbW / 2, hbH / 2, 'FD');
-            doc.setFillColor(255, 255, 255);
-            R(rbX, hbY + hbH / 2, rbW / 2, hbH / 2);
-            R(rbX + rbW / 2, hbY + hbH / 2, rbW / 2, hbH / 2);
-
-            F(7.5, 'bold');
-            T('INVOICE #', rbX + rbW / 4, hbY + 4, { align: 'center' });
-            T('DATE', rbX + rbW * 3 / 4, hbY + 4, { align: 'center' });
-
-            F(9, 'normal');
-            T(state.invoiceNumber || 1, rbX + rbW / 4, hbY + hbH * 0.77, { align: 'center' });
+            // ── SENDER + INVOICE # ──
             const today = new Date();
             const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-            F(7, 'normal');
-            T(dateStr, rbX + rbW * 3 / 4, hbY + hbH * 0.77, { align: 'center' });
 
-            // Sender details
-            const senderRows = [
-                ['Your Name', state.userName || 'Anjali'],
-                ['Your Address Line 1', '101, Vijaya Heritage'],
-                ['Your Address Line 2', '11th Road, Chembur'],
-                ['Your Address Line 3', 'Mumbai - 400071'],
-                ['Contact No.:', '8104959546'],
-                ['Email Id :', 'anjali@adhyayan.asia'],
-            ];
-            let sy = y + 6;
-            senderRows.forEach(([lbl, val]) => {
-                F(8, 'normal'); T(lbl, ml + 2, sy);
-                F(8, 'normal'); T(val, ml + 40, sy);
-                sy += 5.3;
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 1.5, lineColor: black, lineWidth: thinLine },
+                columnStyles: {
+                    0: { cellWidth: cw * 0.55 },
+                    1: { cellWidth: cw * 0.45 }
+                },
+                body: [[
+                    { content: `${state.userName || 'Anjali'}\n101, Vijaya Heritage\n11th Road, Chembur\nMumbai - 400071\nContact No.: 8104959546\nEmail: anjali@adhyayan.asia`, styles: { fontSize: 8 } },
+                    { content: `INVOICE #:  ${state.invoiceNumber || 1}\nDATE:  ${dateStr}`, styles: { halign: 'center', valign: 'middle', fontSize: 9, fontStyle: 'bold' } }
+                ]]
             });
-            y += sH;
+            y = doc.lastAutoTable.finalY;
 
             // ── BILL TO ──
-            const btH = 46;
-            R(ml, y, cw * 0.58, btH);
-            doc.setFillColor(220, 220, 220);
-            R(ml + 3, y + 2, 32, 6, 'FD');
-            doc.setFillColor(255, 255, 255);
-            F(8, 'bold'); T('BILL TO', ml + 3 + 16, y + 6.5, { align: 'center' });
-            F(8.5, 'bold'); T('Adhyayan Quality Education Services Pvt. Ltd.', ml + 2, y + 15);
-            F(8, 'normal');
-            const btLines = [
-                'A - 17, Floor - 01, Royal Industrial Estate,',
-                'Sewree Wadala Road No. 26,',
-                'Wadala, Mumbai 400031.',
-                'Maharashtra.',
-                'Contact No.: 91-97731 87331'
-            ];
-            let by = y + 21;
-            btLines.forEach(l => { T(l, ml + 2, by); by += 4.5; });
-            y += btH;
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2, lineColor: black, lineWidth: thinLine },
+                head: [[
+                    { content: 'BILL TO', styles: { halign: 'left', fillColor: gray, textColor: black, fontStyle: 'bold' } }
+                ]],
+                body: [[
+                    { content: 'Adhyayan Quality Education Services Pvt. Ltd.\nA - 17, Floor - 01, Royal Industrial Estate,\nSewree Wadala Road No. 26,\nWadala, Mumbai 400031.\nMaharashtra.\nContact No.: 91-97731 87331' }
+                ]],
+                columnStyles: { 0: { cellWidth: cw } }
+            });
+            y = doc.lastAutoTable.finalY;
 
-            // ── TABLE HEADER ──
-            const c1 = cw * 0.44, c2 = cw * 0.13, c3 = cw * 0.13, c4 = cw * 0.15, c5 = cw * 0.15;
-            const thH = 12;
-            doc.setFillColor(220, 220, 220);
-            R(ml, y, cw, thH, 'FD');
-            doc.setFillColor(255, 255, 255);
-            R(ml, y, c1, thH); R(ml + c1, y, c2, thH); R(ml + c1 + c2, y, c3, thH);
-            R(ml + c1 + c2 + c3, y, c4, thH); R(ml + c1 + c2 + c3 + c4, y, c5, thH);
-            F(9, 'bold'); T('Description', ml + c1 / 2, y + 7.5, { align: 'center' });
-            F(7.5, 'bold');
-            T('Expected', ml + c1 + c2 / 2, y + 4.5, { align: 'center' });
-            T('working hours', ml + c1 + c2 / 2, y + 9, { align: 'center' });
-            T('Actual working', ml + c1 + c2 + c3 / 2, y + 4.5, { align: 'center' });
-            T('hours', ml + c1 + c2 + c3 / 2, y + 9, { align: 'center' });
-            T('Monthly', ml + c1 + c2 + c3 + c4 / 2, y + 4.5, { align: 'center' });
-            T('amount', ml + c1 + c2 + c3 + c4 / 2, y + 9, { align: 'center' });
-            T('AMOUNT', ml + c1 + c2 + c3 + c4 + c5 / 2, y + 7.5, { align: 'center' });
-            y += thH;
-
-            // ── DATA ROW ──
+            // ── INVOICE TABLE (Description + Hours + Amount) ──
             const lastInvDate = state.lastInvoiceDate
                 ? new Date(state.lastInvoiceDate)
                 : new Date(today.getFullYear(), today.getMonth(), 1);
@@ -1874,101 +1833,98 @@
             const actualHours = Math.round(state.monthlyMinutes / 60 * 10) / 10;
             const expectedHours = state.targetHours || 195;
             const monthlyRate = state.monthlyRate || 0;
-            const rateStr = monthlyRate ? monthlyRate.toLocaleString('en-IN') : '';
+            const rateStr = monthlyRate ? `₹${Number(monthlyRate).toLocaleString('en-IN')}` : '';
 
-            // Build description lines
-            const lh = 4.5;
-            const descLines = [
-                { t: 'Professional Fees towards Independent Consultant as ', b: false },
-                { t: '"Programmes Manager"', b: true },
-                { t: `for the month of ${invoiceMonthYear}`, b: false },
-                { t: `(Period: From ${periodStart} to ${periodEnd})`, b: false },
-                { t: '', b: false },
-                { t: `Total Working Hours:  ${actualHours}`, b: true },
-                { t: '', b: false },
-                { t: 'Deliverables:', b: true },
-                ...uniqueTasks.map(task => ({ t: `\u2022 ${task}`, b: false }))
-            ];
-
-            const drH = Math.max(65, descLines.length * lh + 14);
-            R(ml, y, c1, drH); R(ml + c1, y, c2, drH); R(ml + c1 + c2, y, c3, drH);
-            R(ml + c1 + c2 + c3, y, c4, drH); R(ml + c1 + c2 + c3 + c4, y, c5, drH);
-
-            // Render description text - handle line 0+1 as inline
-            let dy = y + 5;
-            let i = 0;
-            while (i < descLines.length) {
-                const item = descLines[i];
-                if (item.t === '') { dy += lh / 2; i++; continue; }
-                // Check if next line should be inline (bold continuation)
-                if (!item.b && i + 1 < descLines.length && descLines[i + 1].b &&
-                    descLines[i + 1].t.startsWith('"')) {
-                    F(8, 'normal');
-                    T(item.t, ml + 2, dy);
-                    const w1 = doc.getTextWidth(item.t);
-                    F(8, 'bold');
-                    T(descLines[i + 1].t, ml + 2 + w1, dy);
-                    i += 2;
-                } else {
-                    F(8, item.b ? 'bold' : 'normal');
-                    // Word-wrap long task names
-                    const wrapped = doc.splitTextToSize(item.t, c1 - 5);
-                    wrapped.forEach((wl, wi) => { if (wi > 0) dy += lh; T(wl, ml + 2, dy); });
-                    i++;
-                }
-                dy += lh;
-            }
-
-            // Values in right columns
-            const midY = y + drH / 2;
-            F(9, 'normal');
-            T(String(expectedHours), ml + c1 + c2 / 2, midY, { align: 'center' });
-            T(String(actualHours), ml + c1 + c2 + c3 / 2, midY, { align: 'center' });
-            T(rateStr, ml + c1 + c2 + c3 + c4 / 2, midY, { align: 'center' });
-            T(rateStr, ml + c1 + c2 + c3 + c4 + c5 / 2, midY, { align: 'center' });
-            y += drH;
-
-            // ── TOTAL ROW ──
-            const totH = 10;
-            R(ml, y, c1 + c2 + c3, totH);
-            R(ml + c1 + c2 + c3, y, c4, totH);
-            R(ml + c1 + c2 + c3 + c4, y, c5, totH);
-            const amtWords = numberToWords(monthlyRate);
-            F(7.5, 'normal');
-            const wrappedWords = doc.splitTextToSize(`Amount In Words: ${amtWords}`, c1 + c2 + c3 - 4);
-            T(wrappedWords[0], ml + 2, y + 6.5);
-            F(9, 'bold'); T('Total -', ml + c1 + c2 + c3 + c4 / 2, y + 6.5, { align: 'center' });
-            F(9, 'normal'); T(rateStr, ml + c1 + c2 + c3 + c4 + c5 / 2, y + 6.5, { align: 'center' });
-            y += totH + 5;
-
-            // ── BANK DETAILS ──
-            const bankH = 52;
-            const bankW = cw * 0.6;
-            R(ml, y, bankW, bankH);
-            R(ml + bankW, y, cw - bankW, bankH);
-            F(9, 'bold'); T('Bank Details :', ml + 2, y + 6);
-            L(ml, y + 8, ml + bankW, y + 8);
-            const bankRows = [
-                ['Name of Account :', 'Anjali Ramesh'],
-                ['Name of Bank :', 'HDFC Bank'],
-                ['Address of Bank Branch :', 'D/33, NDSE/1, South Extension,'],
-                ['', 'New Delhi, Delhi 110049'],
-                ['Bank Account No.:', '50100621854022'],
-                ['Type of Account :', 'Savings'],
-                ['IFSC Code :', 'HDFC0000319'],
-                ['PAN No.', 'EBPPR6073A'],
-            ];
-            let bankY = y + 12;
-            bankRows.forEach(([lbl, val]) => {
-                if (lbl) { F(7.5, 'bold'); T(lbl, ml + 2, bankY); }
-                F(7.5, 'normal'); T(val, ml + 44, bankY);
-                bankY += 4.8;
+            // Build description text
+            let descriptionText = `Professional Fees towards Independent Consultant as "Programmes Manager" for the month of ${invoiceMonthYear}\n`;
+            descriptionText += `(Period: From ${periodStart} to ${periodEnd})\n\n`;
+            descriptionText += `Total Working Hours: ${actualHours}\n\n`;
+            descriptionText += 'Deliverables:\n';
+            uniqueTasks.forEach(task => {
+                descriptionText += `• ${task}\n`;
             });
 
-            // Signature
-            const sigX = ml + bankW + (cw - bankW) / 2;
-            F(10, 'italic'); T('Anjali Ramesh', sigX, y + bankH - 8, { align: 'center' });
-            L(sigX - 22, y + bankH - 4, sigX + 22, y + bankH - 4);
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2, lineColor: black, lineWidth: thinLine, overflow: 'linebreak' },
+                headStyles: { fillColor: gray, textColor: black, fontStyle: 'bold', halign: 'center', fontSize: 7.5 },
+                head: [['Description', 'Expected\nWorking\nHours', 'Actual\nWorking\nHours', 'Monthly\nAmount', 'AMOUNT']],
+                body: [[
+                    { content: descriptionText.trim(), styles: { halign: 'left', fontSize: 7.5 } },
+                    { content: String(expectedHours), styles: { halign: 'center', valign: 'middle' } },
+                    { content: String(actualHours), styles: { halign: 'center', valign: 'middle' } },
+                    { content: rateStr, styles: { halign: 'center', valign: 'middle' } },
+                    { content: rateStr, styles: { halign: 'center', valign: 'middle' } }
+                ]],
+                columnStyles: {
+                    0: { cellWidth: cw * 0.44 },
+                    1: { cellWidth: cw * 0.13 },
+                    2: { cellWidth: cw * 0.13 },
+                    3: { cellWidth: cw * 0.15 },
+                    4: { cellWidth: cw * 0.15 }
+                }
+            });
+            y = doc.lastAutoTable.finalY;
+
+            // ── TOTAL ROW ──
+            const amtWords = numberToWords(monthlyRate);
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2, lineColor: black, lineWidth: thinLine },
+                body: [[
+                    { content: `Amount In Words: ${amtWords}`, styles: { fontSize: 7, cellWidth: cw * 0.70 } },
+                    { content: 'Total -', styles: { halign: 'center', fontStyle: 'bold', cellWidth: cw * 0.15 } },
+                    { content: rateStr, styles: { halign: 'center', cellWidth: cw * 0.15 } }
+                ]]
+            });
+            y = doc.lastAutoTable.finalY + 5;
+
+            // ── BANK DETAILS + SIGNATURE ──
+            // Check if we need a new page
+            if (y + 55 > ph - 15) {
+                doc.addPage();
+                y = 15;
+            }
+
+            const bankW = cw * 0.6;
+            const sigW = cw * 0.4;
+
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                theme: 'grid',
+                styles: { fontSize: 7.5, cellPadding: 1.5, lineColor: black, lineWidth: thinLine },
+                head: [[
+                    { content: 'Bank Details', styles: { fillColor: white, textColor: black, fontStyle: 'bold', cellWidth: bankW } },
+                    { content: '', styles: { fillColor: white, cellWidth: sigW } }
+                ]],
+                body: [
+                    [{ content: 'Name of Account:\nName of Bank:\nAddress of Bank Branch:\n\nBank Account No.:\nType of Account:\nIFSC Code:\nPAN No.:', styles: { fontStyle: 'bold' } },
+                     { content: '', rowSpan: 2 }],
+                    [{ content: 'Anjali Ramesh\nHDFC Bank\nD/33, NDSE/1, South Extension,\nNew Delhi, Delhi 110049\n50100621854022\nSavings\nHDFC0000319\nEBPPR6073A' }]
+                ],
+                didDrawCell: function(data) {
+                    // Draw signature in the right column after all rows
+                    if (data.column.index === 1 && data.row.index === 0 && data.section === 'body') {
+                        const cellX = data.cell.x;
+                        const cellY = data.cell.y;
+                        const cellW = data.cell.width;
+                        const cellH = data.cell.height;
+                        const sigCenterX = cellX + cellW / 2;
+                        const sigBaseY = cellY + cellH - 5;
+
+                        doc.setFont('helvetica', 'italic');
+                        doc.setFontSize(10);
+                        doc.text('Anjali Ramesh', sigCenterX, sigBaseY, { align: 'center' });
+                        doc.setLineWidth(0.3);
+                        doc.line(sigCenterX - 22, sigBaseY + 3, sigCenterX + 22, sigBaseY + 3);
+                    }
+                }
+            });
 
             return doc;
         }
