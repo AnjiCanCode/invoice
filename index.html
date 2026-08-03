@@ -399,9 +399,8 @@
             .container { border-radius: 0; height: 100vh; height: 100dvh; max-height: none; border: none; }
         }
     </style>
-    <!-- jsPDF for invoice generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- docx for invoice generation -->
+    <script src="https://unpkg.com/docx@8.2.3/build/index.js"></script>
 </head>
 <body>
     <!-- Setup Panel -->
@@ -1749,9 +1748,9 @@
             return result + ' Only';
         }
 
-        async function generateInvoicePDF() {
-            if (typeof window.jspdf === 'undefined') {
-                addSystemMessage('⚠️ PDF library not loaded. Please check your connection and try again.');
+        async function generateInvoiceDOCX() {
+            if (typeof window.docx === 'undefined') {
+                addSystemMessage('⚠️ DOCX library not loaded. Please check your connection and try again.');
                 return null;
             }
 
@@ -1767,163 +1766,215 @@
                 if (key && !seen.has(key)) { seen.add(key); uniqueTasks.push(key); }
             });
 
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const pw = doc.internal.pageSize.getWidth();   // 210
-            const ph = doc.internal.pageSize.getHeight();   // 297
-            const ml = 15, mr = 15;
-            const cw = pw - ml - mr; // 180
-            let y = 15;
-
-            // ── Styles ──
-            const gray = [220, 220, 220];
-            const white = [255, 255, 255];
-            const black = [0, 0, 0];
-            const thinLine = 0.2;
-
-            // ── TITLE ──
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.text('INVOICE', pw / 2, y, { align: 'center' });
-            y += 8;
-
-            // ── SENDER + INVOICE # ──
+            const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } = window.docx;
+            
             const today = new Date();
             const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml, right: mr },
-                theme: 'grid',
-                styles: { fontSize: 8, cellPadding: 1.5, lineColor: black, lineWidth: thinLine },
-                columnStyles: {
-                    0: { cellWidth: cw * 0.55 },
-                    1: { cellWidth: cw * 0.45 }
-                },
-                body: [[
-                    { content: `${state.userName || 'Anjali'}\n101, Vijaya Heritage\n11th Road, Chembur\nMumbai - 400071\nContact No.: 8104959546\nEmail: anjali@adhyayan.asia`, styles: { fontSize: 8 } },
-                    { content: `INVOICE #:  ${state.invoiceNumber || 1}\nDATE:  ${dateStr}`, styles: { halign: 'center', valign: 'middle', fontSize: 9, fontStyle: 'bold' } }
-                ]]
-            });
-            y = doc.lastAutoTable.finalY;
-
-            // ── BILL TO ──
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml, right: mr },
-                theme: 'grid',
-                styles: { fontSize: 8, cellPadding: 2, lineColor: black, lineWidth: thinLine },
-                head: [[
-                    { content: 'BILL TO', styles: { halign: 'left', fillColor: gray, textColor: black, fontStyle: 'bold' } }
-                ]],
-                body: [[
-                    { content: 'Adhyayan Quality Education Services Pvt. Ltd.\nA - 17, Floor - 01, Royal Industrial Estate,\nSewree Wadala Road No. 26,\nWadala, Mumbai 400031.\nMaharashtra.\nContact No.: 91-97731 87331' }
-                ]],
-                columnStyles: { 0: { cellWidth: cw } }
-            });
-            y = doc.lastAutoTable.finalY;
-
-            // ── INVOICE TABLE (Description + Hours + Amount) ──
-            const lastInvDate = state.lastInvoiceDate
-                ? new Date(state.lastInvoiceDate)
-                : new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastInvDate = state.lastInvoiceDate ? new Date(state.lastInvoiceDate) : new Date(today.getFullYear(), today.getMonth(), 1);
             const periodStart = lastInvDate.toLocaleDateString('en-IN');
             const periodEnd = today.toLocaleDateString('en-IN');
             const invoiceMonthYear = lastInvDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
             const actualHours = Math.round(state.monthlyMinutes / 60 * 10) / 10;
             const expectedHours = state.targetHours || 195;
             const monthlyRate = state.monthlyRate || 0;
             const rateStr = monthlyRate ? `₹${Number(monthlyRate).toLocaleString('en-IN')}` : '';
-
-            // Build description text
-            let descriptionText = `Professional Fees towards Independent Consultant as "Programmes Manager" for the month of ${invoiceMonthYear}\n`;
-            descriptionText += `(Period: From ${periodStart} to ${periodEnd})\n\n`;
-            descriptionText += `Total Working Hours: ${actualHours}\n\n`;
-            descriptionText += 'Deliverables:\n';
-            uniqueTasks.forEach(task => {
-                descriptionText += `• ${task}\n`;
-            });
-
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml, right: mr },
-                theme: 'grid',
-                styles: { fontSize: 8, cellPadding: 2, lineColor: black, lineWidth: thinLine, overflow: 'linebreak' },
-                headStyles: { fillColor: gray, textColor: black, fontStyle: 'bold', halign: 'center', fontSize: 7.5 },
-                head: [['Description', 'Expected\nWorking\nHours', 'Actual\nWorking\nHours', 'Monthly\nAmount', 'AMOUNT']],
-                body: [[
-                    { content: descriptionText.trim(), styles: { halign: 'left', fontSize: 7.5 } },
-                    { content: String(expectedHours), styles: { halign: 'center', valign: 'middle' } },
-                    { content: String(actualHours), styles: { halign: 'center', valign: 'middle' } },
-                    { content: rateStr, styles: { halign: 'center', valign: 'middle' } },
-                    { content: rateStr, styles: { halign: 'center', valign: 'middle' } }
-                ]],
-                columnStyles: {
-                    0: { cellWidth: cw * 0.44 },
-                    1: { cellWidth: cw * 0.13 },
-                    2: { cellWidth: cw * 0.13 },
-                    3: { cellWidth: cw * 0.15 },
-                    4: { cellWidth: cw * 0.15 }
-                }
-            });
-            y = doc.lastAutoTable.finalY;
-
-            // ── TOTAL ROW ──
             const amtWords = numberToWords(monthlyRate);
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml, right: mr },
-                theme: 'grid',
-                styles: { fontSize: 8, cellPadding: 2, lineColor: black, lineWidth: thinLine },
-                body: [[
-                    { content: `Amount In Words: ${amtWords}`, styles: { fontSize: 7, cellWidth: cw * 0.70 } },
-                    { content: 'Total -', styles: { halign: 'center', fontStyle: 'bold', cellWidth: cw * 0.15 } },
-                    { content: rateStr, styles: { halign: 'center', cellWidth: cw * 0.15 } }
-                ]]
-            });
-            y = doc.lastAutoTable.finalY + 5;
 
-            // ── BANK DETAILS + SIGNATURE ──
-            // Check if we need a new page
-            if (y + 55 > ph - 15) {
-                doc.addPage();
-                y = 15;
-            }
+            // Helpers for docx
+            const boldCell = (text, widthPct, align = AlignmentType.LEFT, bgColor = undefined) => {
+                return new TableCell({
+                    width: { size: widthPct, type: WidthType.PERCENTAGE },
+                    shading: bgColor ? { fill: bgColor } : undefined,
+                    children: [new Paragraph({ children: [new TextRun({ text: text, bold: true, size: 18 })], alignment: align })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                });
+            };
+            
+            const normalCell = (text, widthPct, align = AlignmentType.LEFT) => {
+                return new TableCell({
+                    width: { size: widthPct, type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ children: [new TextRun({ text: text, size: 18 })], alignment: align })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                });
+            };
 
-            const bankW = cw * 0.6;
-            const sigW = cw * 0.4;
-
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml, right: mr },
-                theme: 'grid',
-                styles: { fontSize: 7.5, cellPadding: 1.5, lineColor: black, lineWidth: thinLine },
-                head: [[
-                    { content: 'Bank Details', styles: { fillColor: white, textColor: black, fontStyle: 'bold', cellWidth: bankW } },
-                    { content: '', styles: { fillColor: white, cellWidth: sigW } }
-                ]],
-                body: [
-                    [{ content: 'Name of Account:\nName of Bank:\nAddress of Bank Branch:\n\nBank Account No.:\nType of Account:\nIFSC Code:\nPAN No.:', styles: { fontStyle: 'bold' } },
-                     { content: '', rowSpan: 2 }],
-                    [{ content: 'Anjali Ramesh\nHDFC Bank\nD/33, NDSE/1, South Extension,\nNew Delhi, Delhi 110049\n50100621854022\nSavings\nHDFC0000319\nEBPPR6073A' }]
-                ],
-                didDrawCell: function(data) {
-                    // Draw signature in the right column after all rows
-                    if (data.column.index === 1 && data.row.index === 0 && data.section === 'body') {
-                        const cellX = data.cell.x;
-                        const cellY = data.cell.y;
-                        const cellW = data.cell.width;
-                        const cellH = data.cell.height;
-                        const sigCenterX = cellX + cellW / 2;
-                        const sigBaseY = cellY + cellH - 5;
-
-                        doc.setFont('helvetica', 'italic');
-                        doc.setFontSize(10);
-                        doc.text('Anjali Ramesh', sigCenterX, sigBaseY, { align: 'center' });
-                        doc.setLineWidth(0.3);
-                        doc.line(sigCenterX - 22, sigBaseY + 3, sigCenterX + 22, sigBaseY + 3);
-                    }
-                }
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text: "INVOICE", bold: true, size: 28 })],
+                            alignment: AlignmentType.CENTER,
+                            spacing: { after: 400 }
+                        }),
+                        
+                        // Sender & Invoice Info
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            width: { size: 60, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({ children: [new TextRun({ text: state.userName || 'Anjali', size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "101, Vijaya Heritage", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "11th Road, Chembur", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Mumbai - 400071", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Contact No.: 8104959546", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Email: anjali@adhyayan.asia", size: 18 })] }),
+                                            ],
+                                            margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                                        }),
+                                        new TableCell({
+                                            width: { size: 40, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({
+                                                    children: [new TextRun({ text: `INVOICE #: ${state.invoiceNumber || 1}`, bold: true, size: 18 })],
+                                                    alignment: AlignmentType.CENTER
+                                                }),
+                                                new Paragraph({
+                                                    children: [new TextRun({ text: `DATE: ${dateStr}`, bold: true, size: 18 })],
+                                                    alignment: AlignmentType.CENTER
+                                                })
+                                            ],
+                                            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                                            verticalAlign: "center"
+                                        })
+                                    ]
+                                })
+                            ]
+                        }),
+                        new Paragraph({ spacing: { after: 300 } }),
+                        
+                        // Bill To
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        boldCell("BILL TO", 100, AlignmentType.LEFT, "D3D3D3")
+                                    ]
+                                }),
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            children: [
+                                                new Paragraph({ children: [new TextRun({ text: "Adhyayan Quality Education Services Pvt. Ltd.", bold: true, size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "A - 17, Floor - 01, Royal Industrial Estate,", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Sewree Wadala Road No. 26,", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Wadala, Mumbai 400031.", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Maharashtra.", size: 18 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Contact No.: 91-97731 87331", size: 18 })] })
+                                            ],
+                                            margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                                        })
+                                    ]
+                                })
+                            ]
+                        }),
+                        new Paragraph({ spacing: { after: 300 } }),
+                        
+                        // Invoice Table
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        boldCell("Description", 44, AlignmentType.CENTER, "D3D3D3"),
+                                        boldCell("Expected\nWorking\nHours", 13, AlignmentType.CENTER, "D3D3D3"),
+                                        boldCell("Actual\nWorking\nHours", 13, AlignmentType.CENTER, "D3D3D3"),
+                                        boldCell("Monthly\nAmount", 15, AlignmentType.CENTER, "D3D3D3"),
+                                        boldCell("AMOUNT", 15, AlignmentType.CENTER, "D3D3D3")
+                                    ]
+                                }),
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            width: { size: 44, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({ children: [new TextRun({ text: `Professional Fees towards Independent Consultant as "Programmes Manager" for the month of ${invoiceMonthYear}`, size: 17 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: `(Period: From ${periodStart} to ${periodEnd})`, size: 17 })] }),
+                                                new Paragraph({ text: "" }),
+                                                new Paragraph({ children: [new TextRun({ text: `Total Working Hours: ${actualHours}`, bold: true, size: 17 })] }),
+                                                new Paragraph({ text: "" }),
+                                                new Paragraph({ children: [new TextRun({ text: "Deliverables:", bold: true, size: 17 })] }),
+                                                ...uniqueTasks.map(task => new Paragraph({ children: [new TextRun({ text: `• ${task}`, size: 17 })] }))
+                                            ],
+                                            margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                                        }),
+                                        new TableCell({ width: { size: 13, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: String(expectedHours), size: 18 })], alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+                                        new TableCell({ width: { size: 13, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: String(actualHours), size: 18 })], alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+                                        new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: rateStr, size: 18 })], alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+                                        new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: rateStr, size: 18 })], alignment: AlignmentType.CENTER })], verticalAlign: "center" })
+                                    ]
+                                })
+                            ]
+                        }),
+                        new Paragraph({ spacing: { after: 300 } }),
+                        
+                        // Total Row
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        normalCell(`Amount In Words: ${amtWords}`, 70),
+                                        boldCell("Total -", 15, AlignmentType.CENTER),
+                                        normalCell(rateStr, 15, AlignmentType.CENTER)
+                                    ]
+                                })
+                            ]
+                        }),
+                        new Paragraph({ spacing: { after: 500 } }),
+                        
+                        // Bank Details
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        boldCell("Bank Details", 60),
+                                        normalCell("", 40)
+                                    ]
+                                }),
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            width: { size: 60, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({ children: [new TextRun({ text: "Name of Account: ", bold: true, size: 17 }), new TextRun({ text: "Anjali Ramesh", size: 17 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Name of Bank: ", bold: true, size: 17 }), new TextRun({ text: "HDFC Bank", size: 17 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Address of Bank Branch: ", bold: true, size: 17 }), new TextRun({ text: "D/33, NDSE/1, South Extension, New Delhi, Delhi 110049", size: 17 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Bank Account No.: ", bold: true, size: 17 }), new TextRun({ text: "50100621854022", size: 17 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "Type of Account: ", bold: true, size: 17 }), new TextRun({ text: "Savings", size: 17 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "IFSC Code: ", bold: true, size: 17 }), new TextRun({ text: "HDFC0000319", size: 17 })] }),
+                                                new Paragraph({ children: [new TextRun({ text: "PAN No.: ", bold: true, size: 17 }), new TextRun({ text: "EBPPR6073A", size: 17 })] })
+                                            ],
+                                            margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                                        }),
+                                        new TableCell({
+                                            width: { size: 40, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({ spacing: { before: 800 } }),
+                                                new Paragraph({
+                                                    children: [new TextRun({ text: "Anjali Ramesh", italics: true, size: 22 })],
+                                                    alignment: AlignmentType.CENTER
+                                                }),
+                                                new Paragraph({
+                                                    children: [new TextRun({ text: "___________________________", size: 18 })],
+                                                    alignment: AlignmentType.CENTER
+                                                })
+                                            ],
+                                            verticalAlign: "bottom"
+                                        })
+                                    ]
+                                })
+                            ]
+                        })
+                    ]
+                }]
             });
 
             return doc;
@@ -1948,14 +1999,24 @@
         }
 
         async function downloadInvoice() {
-            addSystemMessage('📄 Generating invoice PDF...');
+            addSystemMessage('📄 Generating invoice DOCX...');
             try {
-                const doc = await generateInvoicePDF();
+                const doc = await generateInvoiceDOCX();
                 if (!doc) return;
                 const monthName = (state.lastInvoiceDate ? new Date(state.lastInvoiceDate) : new Date())
                     .toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).replace(' ', '_');
-                const fileName = `Invoice_${state.invoiceNumber || 1}_${monthName}.pdf`;
-                doc.save(fileName);
+                const fileName = `Invoice_${state.invoiceNumber || 1}_${monthName}.docx`;
+                
+                const blob = await window.docx.Packer.toBlob(doc);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
                 state.lastInvoiceDate = new Date().toISOString();
                 state.invoiceNumber = (parseInt(state.invoiceNumber) || 1) + 1;
                 saveState();
@@ -1973,16 +2034,17 @@
             }
             addSystemMessage('📄 Generating invoice...');
             try {
-                const doc = await generateInvoicePDF();
+                const doc = await generateInvoiceDOCX();
                 if (!doc) return;
                 const today = new Date();
                 const monthName = (state.lastInvoiceDate ? new Date(state.lastInvoiceDate) : today)
                     .toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).replace(' ', '_');
-                const fileName = `Invoice_${state.invoiceNumber || 1}_${monthName}.pdf`;
+                const fileName = `Invoice_${state.invoiceNumber || 1}_${monthName}.docx`;
+
+                const blob = await window.docx.Packer.toBlob(doc);
 
                 // Try Web Share API (mobile - lets user pick their email app)
-                const pdfBlob = doc.output('blob');
-                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
@@ -1993,7 +2055,13 @@
                 } else if (state.scriptUrl && state.invoiceEmail) {
                     // Send via Google Apps Script
                     addSystemMessage('📧 Sending via email...');
-                    const pdfBase64 = doc.output('datauristring').split(',')[1];
+                    
+                    const fileBase64 = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    });
+                    
                     const invoiceMonthYear = (state.lastInvoiceDate ? new Date(state.lastInvoiceDate) : today)
                         .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                     await fetch(state.scriptUrl, {
@@ -2005,14 +2073,21 @@
                             email: state.invoiceEmail,
                             subject: `Invoice #${state.invoiceNumber || 1} - ${invoiceMonthYear} - ${state.userName || 'Anjali'}`,
                             body: `Dear Team,\n\nPlease find attached the invoice for ${invoiceMonthYear}.\n\nAmount: ₹${state.monthlyRate ? Number(state.monthlyRate).toLocaleString('en-IN') : ''}\n\nRegards,\n${state.userName || 'Anjali'}`,
-                            pdfBase64,
+                            fileBase64,
                             fileName
                         })
                     });
                     addSystemMessage(`📧 Invoice sent to ${state.invoiceEmail}!`);
                 } else {
                     addSystemMessage('⚠️ No sharing available. Using download instead.');
-                    doc.save(fileName);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
                 }
 
                 state.lastInvoiceDate = today.toISOString();
