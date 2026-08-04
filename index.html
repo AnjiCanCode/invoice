@@ -2052,17 +2052,10 @@
 
                 const blob = await window.docx.Packer.toBlob(doc);
 
-                // Try Web Share API (mobile - lets user pick their email app)
                 const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: `Invoice #${state.invoiceNumber || 1}`,
-                        text: `Invoice for ${monthName.replace('_', ' ')} from ${state.userName || 'Anjali'}`
-                    });
-                    addSystemMessage('📤 Invoice shared!');
-                } else if (state.scriptUrl && state.invoiceEmail) {
-                    // Send via Google Apps Script
+
+                if (state.scriptUrl && state.invoiceEmail) {
+                    // Send via Google Apps Script (Primary: background, reliable, no gesture timeout)
                     addSystemMessage('📧 Sending via email...');
                     
                     const fileBase64 = await new Promise((resolve) => {
@@ -2087,6 +2080,14 @@
                         })
                     });
                     addSystemMessage(`📧 Invoice sent to ${state.invoiceEmail}!`);
+                } else if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    // Try Web Share API (mobile fallback)
+                    await navigator.share({
+                        files: [file],
+                        title: `Invoice #${state.invoiceNumber || 1}`,
+                        text: `Invoice for ${monthName.replace('_', ' ')} from ${state.userName || 'Anjali'}`
+                    });
+                    addSystemMessage('📤 Invoice shared!');
                 } else {
                     addSystemMessage('⚠️ No sharing available. Using download instead.');
                     const url = URL.createObjectURL(blob);
